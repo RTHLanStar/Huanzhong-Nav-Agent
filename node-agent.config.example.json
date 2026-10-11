@@ -1,0 +1,9 @@
+{
+  "mainUrl": "https://nav.example.com",
+  "nodeToken": "粘贴主站添加节点后显示的完整令牌",
+  "nodeRoot": "./files",
+  "nodeHost": "0.0.0.0",
+  "nodePort": 2230,
+  "nodeCapacityMbps": 100,
+  "nodeId": "可选：主站添加节点后返回的节点 ID"
+}

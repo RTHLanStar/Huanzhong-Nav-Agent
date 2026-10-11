@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link id="pageFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='20' fill='%231d1d1f'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' font-family='Arial,sans-serif' font-weight='700' fill='white'%3E%E5%B9%BB%3C/text%3E%3C/svg%3E">
+<title>文件下载 - 幻终の导航</title>
+<style>
+:root {
+  --bg: #f5f5f7;
+  --bg-grad: #f5f5f7;
+  --card-bg: #ffffff;
+  --card-border: #e5e5ea;
+  --text: #1d1d1f;
+  --text-2: #6e6e73;
+  --accent: #007aff;
+  --accent-soft: rgba(0,122,255,.12);
+  --shadow: 0 8px 24px -8px rgba(0,0,0,.08), 0 4px 8px -4px rgba(0,0,0,.05);
+  --input-bg: #ffffff;
+  --brand-solid: #1d1d1f;
+}
+[data-theme="dark"] {
+  --bg: #000000;
+  --bg-grad: #000000;
+  --card-bg: #1c1c1e;
+  --card-border: #3a3a3c;
+  --text: #f5f5f7;
+  --text-2: #8e8e93;
+  --accent: #0a84ff;
+  --accent-soft: rgba(10,132,255,.18);
+  --shadow: 0 8px 24px -8px rgba(0,0,0,.5), 0 4px 8px -4px rgba(0,0,0,.4);
+  --input-bg: #1c1c1e;
+  --brand-solid: #f5f5f7;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg-grad) fixed;
+  color: var(--text);
+  min-height: 100vh;
+  transition: background .3s, color .3s;
+}
+.wrap { max-width: 860px; margin: 0 auto; padding: 12px 20px 60px; }
+
+/* 顶栏 */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 18px 24px;
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+.brand .logo {
+  width: 40px; height: 40px; border-radius: 18px;
+  background: var(--brand-solid);
+  color: #fff; font-size: 20px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow);
+}
+.brand h1 { font-size: 20px; letter-spacing: 1px; }
+.actions { display: flex; gap: 10px; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 18px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg); color: var(--text);
+  font-size: 18px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;
+  text-decoration: none;
+}
+.icon-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* 页头 */
+.page-head { text-align: center; margin: 20px 0 24px; }
+.page-head .big { font-size: 26px; font-weight: 700; }
+.page-head .sub { color: var(--text-2); font-size: 13px; margin-top: 6px; }
+
+/* 搜索 */
+.search-box { max-width: 560px; margin: 0 auto 22px; position: relative; }
+.search-box input {
+  width: 100%; padding: 12px 44px 12px 18px;
+  border-radius: 18px; border: 1px solid var(--card-border);
+  background: var(--input-bg); color: var(--text);
+  font-size: 14px; outline: none; box-shadow: var(--shadow);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s;
+}
+.search-box input:focus { border-color: var(--accent); }
+.search-box .s-icon {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--text-2); font-size: 16px; pointer-events: none;
+}
+/* 取件码 */
+.code-box {
+  max-width: 560px; margin: 0 auto 22px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 18px; border: 1px dashed var(--accent);
+  background: var(--accent-soft); color: var(--accent);
+}
+.code-box input {
+  flex: 1; border: none; outline: none; background: transparent;
+  color: var(--text); font-size: 14px; letter-spacing: 2px; text-transform: uppercase;
+}
+.code-box input::placeholder { color: var(--text-2); letter-spacing: 0; text-transform: none; }
+.code-box .dl-btn { padding: 7px 16px; font-size: 12px; }
+
+/* 文件卡片 */
+.file-card {
+  display: flex; align-items: center; gap: 14px;
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 18px; padding: 16px 18px; margin-bottom: 12px;
+  box-shadow: var(--shadow);
+  flex-wrap: wrap;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;
+}
+.file-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.file-card .f-icon {
+  width: 46px; height: 46px; border-radius: 18px; flex-shrink: 0;
+  background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.file-card .f-main { flex: 1; min-width: 180px; }
+.file-card .f-name { font-weight: 600; font-size: 15px; word-break: break-all; }
+.file-card .f-meta { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.file-card .f-desc { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+.file-card .dl-btn {
+  padding: 9px 20px; border-radius: 18px; border: none;
+  background: var(--accent); color: #fff; font-size: 13px;
+  cursor: pointer; text-decoration: none; flex-shrink: 0;
+  transition: opacity .15s;
+}
+.file-card .dl-btn:hover { opacity: 0.9; transform: scale(1.02); }
+.file-card.folder { cursor: pointer; }
+
+/* 面包屑 */
+#breadcrumb {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  font-size: 13px; color: var(--text-2); margin-bottom: 14px;
+}
+#breadcrumb a { color: var(--accent); text-decoration: none; cursor: pointer; }
+#breadcrumb a:hover { text-decoration: underline; }
+#breadcrumb .sep { opacity: .55; }
+
+/* 空状态 */
+.empty { text-align: center; padding: 70px 20px; color: var(--text-2); }
+.empty .big { font-size: 46px; margin-bottom: 12px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%);
+  background: rgba(20,24,33,.92); color: #fff;
+  padding: 10px 20px; border-radius: 18px; font-size: 14px;
+  opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 99;
+}
+.toast.show { opacity: 1; }
+/* 验证码弹窗 */
+.cap-mask {
+  position: fixed; inset: 0; background: rgba(10,12,20,.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 300;
+}
+.cap-box {
+  width: 100%; max-width: 340px;
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 18px; box-shadow: var(--shadow);
+  padding: 22px 22px 18px; text-align: center;
+}
+.cap-title { font-weight: 600; font-size: 16px; }
+.cap-sub { color: var(--text-2); font-size: 12px; margin-top: 6px; }
+.cap-img-row { display: flex; gap: 10px; margin-top: 16px; align-items: stretch; }
+.cap-img-row img {
+  width: 120px; height: 44px; border-radius: 18px; cursor: pointer;
+  border: 1px solid var(--card-border); background: #fff; flex-shrink: 0;
+}
+.cap-img-row input {
+  flex: 1; padding: 10px 12px; border-radius: 18px;
+  border: 1px solid var(--card-border); background: var(--input-bg);
+  color: var(--text); font-size: 15px; letter-spacing: 4px; text-transform: uppercase;
+  outline: none; text-align: center;
+}
+.cap-img-row input:focus { border-color: var(--accent); }
+.cap-err { color: #ef4444; font-size: 12px; margin-top: 10px; min-height: 16px; }
+.cap-btns { display: flex; gap: 10px; margin-top: 8px; }
+.cap-btns button {
+  flex: 1; padding: 10px 0; border-radius: 18px; border: none;
+  font-size: 14px; cursor: pointer; transition: opacity .15s;
+}
+.cap-btns button:hover { opacity: 0.9; }
+#capCancel { background: var(--accent-soft); color: var(--accent); }
+#capConfirm { background: var(--accent); color: #fff; }
+#capConfirm:disabled { opacity: .6; cursor: default; }
+/* 预览弹窗 */
+.pv-mask {
+  position: fixed; inset: 0; background: rgba(10,12,20,.6);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px; z-index: 200;
+}
+.pv-box {
+  width: 100%; max-width: 900px; max-height: 90vh;
+  background: var(--card-bg); border: 1px solid var(--card-border);
+  border-radius: 18px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.pv-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--card-border);
+}
+.pv-title { font-weight: 600; font-size: 15px; word-break: break-all; }
+.pv-actions { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.pv-dl {
+  color: var(--accent); text-decoration: none; font-size: 13px;
+}
+.pv-close {
+  border: none; background: transparent; color: var(--text-2);
+  font-size: 18px; cursor: pointer; line-height: 1;
+}
+.pv-close:hover { opacity: 0.8; transform: scale(1.1); }
+.pv-body {
+  overflow: auto; padding: 18px; flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 200px;
+}
+.pv-body img { max-width: 100%; max-height: 70vh; border-radius: 18px; }
+.pv-body video, .pv-body audio { max-width: 100%; max-height: 70vh; outline: none; }
+.pv-body iframe { width: 100%; height: 70vh; border: none; background: #fff; border-radius: 18px; }
+.pv-text {
+  width: 100%; max-height: 70vh; overflow: auto; align-self: flex-start;
+  white-space: pre-wrap; word-break: break-all;
+  font-family: "JetBrains Mono", Consolas, Monaco, monospace; font-size: 13px; line-height: 1.6;
+  color: var(--text);
+}
+/* 代码预览（带行号与轻量语法高亮） */
+.pv-code {
+  width: 100%; max-height: 70vh; overflow: auto; align-self: flex-start;
+  font-family: "JetBrains Mono", Consolas, Monaco, "Courier New", monospace;
+  font-size: 13px; line-height: 1.55;
+}
+.pv-code .code-line { display: flex; }
+.pv-code .code-line:hover { background: var(--accent-soft); }
+.pv-code .ln {
+  flex-shrink: 0; width: 44px; text-align: right; padding-right: 12px;
+  color: var(--text-2); opacity: .6; user-select: none;
+}
+.pv-code .lc { white-space: pre; flex: 1; word-break: break-all; }
+.pv-code .tk-str { color: #2e9e57; }
+.pv-code .tk-com { color: #8a93a5; font-style: italic; }
+.pv-code .tk-key { color: #7c5ce0; font-weight: 600; }
+.pv-code .tk-num { color: #d97706; }
+[data-theme="dark"] .pv-code .tk-str { color: #7ee0a3; }
+[data-theme="dark"] .pv-code .tk-key { color: #b3a1ff; }
+[data-theme="dark"] .pv-code .tk-num { color: #fbbf24; }
+/* Markdown 渲染预览 */
+.pv-md {
+  width: 100%; max-height: 70vh; overflow: auto; align-self: flex-start;
+  font-size: 14px; line-height: 1.75; color: var(--text);
+  word-break: break-word;
+}
+.pv-md h1, .pv-md h2, .pv-md h3, .pv-md h4 { margin: 18px 0 10px; line-height: 1.4; }
+.pv-md h1 { font-size: 24px; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; }
+.pv-md h2 { font-size: 20px; border-bottom: 1px solid var(--card-border); padding-bottom: 6px; }
+.pv-md h3 { font-size: 17px; }
+.pv-md h4 { font-size: 15px; }
+.pv-md p { margin: 8px 0; }
+.pv-md a { color: var(--accent); }
+.pv-md img { max-width: 100%; border-radius: 18px; }
+.pv-md code {
+  background: var(--accent-soft); color: var(--accent);
+  padding: 2px 6px; border-radius: 5px;
+  font-family: "JetBrains Mono", Consolas, Monaco, monospace; font-size: 13px;
+}
+.pv-md pre {
+  background: var(--input-bg); border: 1px solid var(--card-border);
+  border-radius: 18px; padding: 14px; overflow-x: auto; margin: 10px 0;
+}
+.pv-md pre code { background: none; color: var(--text); padding: 0; display: block; white-space: pre; }
+.pv-md blockquote {
+  border-left: 4px solid var(--accent); background: var(--accent-soft);
+  padding: 8px 14px; margin: 10px 0; border-radius: 0 8px 8px 0;
+  color: var(--text-2);
+}
+.pv-md blockquote p { margin: 4px 0; }
+.pv-md ul, .pv-md ol { padding-left: 26px; margin: 8px 0; }
+.pv-md li { margin: 4px 0; }
+.pv-md hr { border: none; border-top: 1px solid var(--card-border); margin: 16px 0; }
+.pv-md table { border-collapse: collapse; margin: 10px 0; width: 100%; font-size: 13px; }
+.pv-md th, .pv-md td { border: 1px solid var(--card-border); padding: 7px 10px; text-align: left; }
+.pv-md th { background: var(--input-bg); }
+.pv-md .md-task { list-style: none; margin-left: -18px; }
+.pv-loading { color: var(--text-2); font-size: 14px; }
+footer { text-align: center; color: var(--text-2); font-size: 12px; padding: 40px 0 10px; }
+@media (max-width: 560px) {
+  header { padding: 14px 16px; }
+  .brand h1 { font-size: 17px; }
+  .wrap { padding: 8px 14px 40px; }
+  .file-card { padding: 13px 14px; }
+}
+
+/* ===== Apple-style motion ===== */
+:root { --ease-apple: cubic-bezier(0.4, 0, 0.2, 1); }
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+body { animation: fadeIn .5s var(--ease-apple) both; }
+.card, .file-card, .qq-item, .popular-item, .recent-item, .engine, .cat-chip, .announce, .auth-card, .panel, .fm-item {
+  animation: fadeInUp .45s var(--ease-apple) both;
+}
+/* stagger via nth-child for common list containers */
+#fileList .file-card:nth-child(1), #linkList .card:nth-child(1), .grid .card:nth-child(1) { animation-delay: .04s; }
+#fileList .file-card:nth-child(2), #linkList .card:nth-child(2), .grid .card:nth-child(2) { animation-delay: .08s; }
+#fileList .file-card:nth-child(3), #linkList .card:nth-child(3), .grid .card:nth-child(3) { animation-delay: .12s; }
+#fileList .file-card:nth-child(4), #linkList .card:nth-child(4), .grid .card:nth-child(4) { animation-delay: .16s; }
+#fileList .file-card:nth-child(5), #linkList .card:nth-child(5), .grid .card:nth-child(5) { animation-delay: .20s; }
+#fileList .file-card:nth-child(6), #linkList .card:nth-child(6), .grid .card:nth-child(6) { animation-delay: .24s; }
+#fileList .file-card:nth-child(7), #linkList .card:nth-child(7), .grid .card:nth-child(7) { animation-delay: .28s; }
+#fileList .file-card:nth-child(8), #linkList .card:nth-child(8), .grid .card:nth-child(8) { animation-delay: .32s; }
+#fileList .file-card:nth-child(9) { animation-delay: .36s; }
+#fileList .file-card:nth-child(10) { animation-delay: .40s; }
+.btn, .dl-btn, .icon-btn {
+  transition: transform .18s var(--ease-apple), box-shadow .18s var(--ease-apple), background-color .18s var(--ease-apple), color .18s var(--ease-apple);
+}
+.btn:active, .dl-btn:active, .icon-btn:active { transform: scale(0.96); }
+.search-box input, .field input, .code-box input, .cap-img-row input {
+  transition: border-color .2s var(--ease-apple), box-shadow .2s var(--ease-apple), transform .2s var(--ease-apple);
+}
+.search-box input:focus, .field input:focus, .code-box input:focus, .cap-img-row input:focus {
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.pv-mask, .cap-mask {
+  animation: fadeIn .2s var(--ease-apple);
+}
+.pv-box, .cap-box {
+  animation: scaleIn .25s var(--ease-apple);
+}
+.toast {
+  transition: opacity .3s var(--ease-apple), transform .3s var(--ease-apple);
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<header>
+  <a class="brand" href="/">
+    <div class="logo" id="siteLogo">幻</div>
+    <h1 id="siteName">幻终の导航</h1>
+  </a>
+  <div class="actions">
+    <a class="icon-btn" href="/" title="返回导航首页"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></a>
+    <button class="icon-btn" id="themeBtn" title="切换主题"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="page-head">
+    <div class="big"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-5px;margin-right:6px" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>文件下载</div>
+    <div class="sub" id="fileCount"></div>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="fileSearch" placeholder="搜索文件名或描述…" autocomplete="off">
+    <span class="s-icon"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+  </div>
+
+  <div class="code-box" id="codeBox">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/></svg>
+    <input type="text" id="shareCodeInput" placeholder="有取件码？输入取件码直接下载" autocomplete="off" maxlength="12">
+    <button class="dl-btn" id="shareCodeBtn">取件</button>
+  </div>
+
+  <div id="breadcrumb"></div>
+
+  <div id="fileList"></div>
+
+  <div class="empty" id="empty" style="display:none">
+    <div class="big"><svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
+    <div id="emptyText">暂无可下载的文件</div>
+  </div>
+
+  <footer id="footer">幻终の导航 · 文件下载</footer>
+</div>
+
+<!-- 文件预览弹窗 -->
+<div class="pv-mask" id="pvMask" style="display:none">
+  <div class="pv-box">
+    <div class="pv-head">
+      <span class="pv-title" id="pvTitle">预览</span>
+      <div class="pv-actions">
+        <a class="pv-dl" id="pvDownload" href="#">下载</a>
+        <button class="pv-close" id="pvClose" title="关闭">✕</button>
+      </div>
+    </div>
+    <div class="pv-body" id="pvBody"></div>
+  </div>
+</div>
+
+<!-- 人机验证码弹窗（未登录下载时触发） -->
+<div class="cap-mask" id="capMask" style="display:none">
+  <div class="cap-box">
+    <div class="cap-title">安全验证</div>
+    <div class="cap-sub">请输入图片中的字符后继续下载</div>
+    <div class="cap-img-row">
+      <img id="capImg" alt="验证码" title="看不清？点击换一张">
+      <input type="text" id="capInput" maxlength="4" autocomplete="off" placeholder="验证码" aria-label="验证码">
+    </div>
+    <div class="cap-err" id="capErr"></div>
+    <div class="cap-btns">
+      <button type="button" id="capCancel">取消</button>
+      <button type="button" id="capConfirm">确认下载</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var files = [];
+  var folders = [];
+  var allFolders = [];
+  var curFolder = '';
+  var lastKw = '';
+
+  /* 主题（与全站共享偏好） */
+  var theme = localStorage.getItem('ht_theme') ||
+    (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+  /* 线条风格 SVG 图标（currentColor 跟随主题） */
+  function svgWrap(inner, size) {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="' + (size || 22) + '" height="' + (size || 22) +
+      '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+  }
+  var P = {
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+    moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+    folder: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>',
+    folderOpen: '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+    file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+    fileText: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+    archive: '<rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/>',
+    book: '<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/>',
+    table: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M8 13h8"/><path d="M8 17h8"/>',
+    presentation: '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
+    image: '<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>',
+    music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+    film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 12h18"/><path d="M3 7.5h4"/><path d="M17 7.5h4"/><path d="M3 16.5h4"/><path d="M17 16.5h4"/>',
+    settings: '<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>',
+    braces: '<path d="M8 3H7a2 2 0 0 0-2 2v5a2 2 0 0 1-2 2 2 2 0 0 1 2 2v5c0 1.1.9 2 2 2h1"/><path d="M16 21h1a2 2 0 0 0 2-2v-5c0-1.1.9-2 2-2a2 2 0 0 1-2-2V5a2 2 0 0 0-2-2h-1"/>',
+    smartphone: '<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>',
+    coffee: '<path d="M10 2v2"/><path d="M14 2v2"/><path d="M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1"/><path d="M6 2v2"/>'
+  };
+  function iconSvg(name, size) { return svgWrap(P[name] || P.file, size || 22); }
+
+  function applyTheme() {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeBtn').innerHTML = theme === 'dark' ? iconSvg('sun', 19) : iconSvg('moon', 19);
+  }
+  applyTheme();
+  document.getElementById('themeBtn').addEventListener('click', function () {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('ht_theme', theme);
+    applyTheme();
+  });
+
+  function toast(msg) {
+    var t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  function fmtSize(bytes) {
+    if (!bytes && bytes !== 0) return '-';
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB';
+  }
+
+  /* 根据扩展名返回线条风格 SVG 图标 */
+  function fileIconSvg(name) {
+    var ext = (name.split('.').pop() || '').toLowerCase();
+    var map = {
+      zip: 'archive', rar: 'archive', '7z': 'archive', tar: 'archive', gz: 'archive',
+      pdf: 'book', doc: 'book', docx: 'book', xls: 'table', xlsx: 'table', ppt: 'presentation', pptx: 'presentation',
+      txt: 'fileText', md: 'fileText', log: 'fileText',
+      jpg: 'image', jpeg: 'image', png: 'image', gif: 'image', webp: 'image', bmp: 'image', svg: 'image', ico: 'image',
+      mp3: 'music', wav: 'music', flac: 'music', aac: 'music',
+      mp4: 'film', avi: 'film', mkv: 'film', mov: 'film', webm: 'film',
+      exe: 'settings', msi: 'settings', bat: 'terminal', sh: 'terminal',
+      json: 'braces', xml: 'braces', csv: 'braces',
+      apk: 'smartphone', jar: 'coffee'
+    };
+    return iconSvg(map[ext] || 'file', 22);
+  }
+
+  /* 应用顶栏 Logo */
+  function resetLogo() {
+    var el = document.getElementById('siteLogo');
+    if (!el) return;
+    el.replaceChildren(document.createTextNode('幻'));
+    el.style.background = '';
+    el.style.boxShadow = '';
+    el.style.overflow = '';
+    delete el.dataset.logoSrc;
+  }
+  function applyLogo(logoUrl) {
+    var el = document.getElementById('siteLogo');
+    if (!el) return;
+    resetLogo();
+    if (!logoUrl) return;
+    var img = new Image();
+    img.alt = '';
+    img.onload = function () {
+      if (el.dataset.logoSrc !== logoUrl) return;
+      el.replaceChildren(img);
+      el.style.background = 'var(--card-bg)';
+      el.style.boxShadow = 'none';
+      el.style.overflow = 'hidden';
+      img.style.width = '100%'; img.style.height = '100%'; img.style.objectFit = 'contain'; img.style.display = 'block';
+    };
+    img.onerror = function () { if (el.dataset.logoSrc === logoUrl) resetLogo(); };
+    el.dataset.logoSrc = logoUrl;
+    img.src = logoUrl;
+  }
+  function applyFavicon(logoUrl) {
+    var link = document.getElementById('pageFavicon');
+    if (!link) return;
+    if (logoUrl && (/^\/uploads\/[\w.-]+$/.test(logoUrl) || /^https:\/\//i.test(logoUrl))) { link.href = logoUrl; link.type = 'image/png'; }
+    else { link.href = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"%3E%3Crect width="64" height="64" rx="20" fill="%231d1d1f"/%3E%3Ctext x="32" y="43" text-anchor="middle" font-size="34" font-family="Arial,sans-serif" font-weight="700" fill="white"%3E%E5%B9%BB%3C/text%3E%3C/svg%3E'; link.type = 'image/svg+xml'; }
+  }
+
+  /* 面包屑导航 */
+  function renderBreadcrumb() {
+    var el = document.getElementById('breadcrumb');
+    el.innerHTML = '';
+    if (!curFolder) return;
+    var chain = []; var cur = curFolder; var guard = 0;
+    while (cur && guard++ < 50) {
+      var f = null;
+      for (var i = 0; i < allFolders.length; i++) if (allFolders[i].id === cur) { f = allFolders[i]; break; }
+      if (!f) break;
+      chain.unshift(f); cur = f.parentId || '';
+    }
+    var root = document.createElement('a');
+    root.innerHTML = iconSvg('folderOpen', 14) + '&nbsp;全部文件';
+    root.style.display = 'inline-flex'; root.style.alignItems = 'center';
+    root.addEventListener('click', function () { curFolder = ''; document.getElementById('fileSearch').value = ''; loadFolder(); });
+    el.appendChild(root);
+    chain.forEach(function (c, idx) {
+      var sep = document.createElement('span'); sep.className = 'sep'; sep.textContent = ' / ';
+      el.appendChild(sep);
+      var a = document.createElement('a');
+      a.textContent = c.name;
+      if (idx === chain.length - 1) { a.style.cursor = 'default'; a.style.color = 'var(--text)'; a.style.textDecoration = 'none'; }
+      else { (function (fid) { a.addEventListener('click', function () { curFolder = fid; document.getElementById('fileSearch').value = ''; loadFolder(); }); })(c.id); }
+      el.appendChild(a);
+    });
+  }
+
+  /* 渲染当前目录内容 */
+  function render() {
+    var kw = document.getElementById('fileSearch').value.trim().toLowerCase();
+    var list = files.filter(function (f) {
+      return !kw ||
+        (f.name || '').toLowerCase().indexOf(kw) >= 0 ||
+        (f.desc || '').toLowerCase().indexOf(kw) >= 0;
+    });
+
+    var box = document.getElementById('fileList');
+    var empty = document.getElementById('empty');
+    var count = document.getElementById('fileCount');
+    box.innerHTML = '';
+
+    /* 搜索模式：全站检索，只显示文件 */
+    if (kw) {
+      renderBreadcrumb();
+      document.getElementById('breadcrumb').innerHTML = '';
+      count.textContent = list.length ? ('搜索到 ' + list.length + ' 个文件') : '';
+      if (!list.length) {
+        empty.style.display = '';
+        document.getElementById('emptyText').textContent = '没有找到匹配的文件';
+        return;
+      }
+      empty.style.display = 'none';
+    } else {
+      renderBreadcrumb();
+      count.textContent = files.length ? ('共 ' + files.length + ' 个文件') : '';
+      /* 文件夹卡片 */
+      folders.forEach(function (d) {
+        var card = document.createElement('div');
+        card.className = 'file-card folder';
+        var icon = document.createElement('div');
+        icon.className = 'f-icon';
+        icon.innerHTML = iconSvg('folder', 22);
+        var main = document.createElement('div');
+        main.className = 'f-main';
+        var nameEl = document.createElement('div');
+        nameEl.className = 'f-name';
+        nameEl.textContent = d.name;
+        main.appendChild(nameEl);
+        var meta = document.createElement('div');
+        meta.className = 'f-meta';
+        meta.textContent = '文件夹 · 点击进入';
+        main.appendChild(meta);
+        card.appendChild(icon);
+        card.appendChild(main);
+        card.addEventListener('click', function () {
+          curFolder = d.id;
+          document.getElementById('fileSearch').value = '';
+          loadFolder();
+        });
+        /* 打包下载按钮：阻止冒泡，避免误触发进入文件夹 */
+        var zipBtn = document.createElement('button');
+        zipBtn.className = 'dl-btn';
+        zipBtn.style.background = 'var(--accent-soft)';
+        zipBtn.style.color = 'var(--accent)';
+        zipBtn.textContent = '打包下载';
+        zipBtn.title = '将该文件夹内全部文件压缩为 ZIP 下载';
+        zipBtn.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          startZipRequest(d.id);
+        });
+        card.appendChild(zipBtn);
+        box.appendChild(card);
+      });
+    }
+
+    if (!list.length && !kw) {
+      empty.style.display = folders.length ? 'none' : '';
+      document.getElementById('emptyText').textContent = '暂无可下载的文件';
+      return;
+    }
+    empty.style.display = 'none';
+
+    list.forEach(function (f) {
+      var card = document.createElement('div');
+      card.className = 'file-card';
+
+      var icon = document.createElement('div');
+      icon.className = 'f-icon';
+      icon.innerHTML = fileIconSvg(f.name);
+
+      var main = document.createElement('div');
+      main.className = 'f-main';
+      var nameEl = document.createElement('div');
+      nameEl.className = 'f-name';
+      nameEl.textContent = f.name;
+      main.appendChild(nameEl);
+      var meta = document.createElement('div');
+      meta.className = 'f-meta';
+      var date = (f.createdAt || '').slice(0, 10);
+      meta.textContent = fmtSize(f.size) + ' · 已下载 ' + (f.downloads || 0) + ' 次' + (date ? ' · ' + date : '');
+      main.appendChild(meta);
+      if (f.desc) {
+        var descEl = document.createElement('div');
+        descEl.className = 'f-desc';
+        descEl.textContent = f.desc;
+        main.appendChild(descEl);
+      }
+
+      var btn = document.createElement('a');
+      btn.className = 'dl-btn';
+      btn.href = '#';
+      btn.textContent = '下载';
+      btn.addEventListener('click', function (event) { event.preventDefault(); startDownload(f.id); });
+
+      var pvBtn = document.createElement('a');
+      pvBtn.className = 'dl-btn';
+      pvBtn.href = '#';
+      pvBtn.textContent = '预览';
+      pvBtn.style.background = 'var(--accent-soft)';
+      pvBtn.style.color = 'var(--accent)';
+      pvBtn.addEventListener('click', function (event) { event.preventDefault(); openPreview(f); });
+
+      card.appendChild(icon);
+      card.appendChild(main);
+      card.appendChild(pvBtn);
+      card.appendChild(btn);
+      box.appendChild(card);
+    });
+  }
+
+  /* 搜索：有输入时拉取全站文件检索，清空时回到当前目录（300ms 防抖，避免逐字触发重复请求） */
+  var searchTimer = null;
+  document.getElementById('fileSearch').addEventListener('input', function () {
+    var el = this;
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(function () {
+      var kw = el.value.trim();
+      if (kw) {
+        if (kw === lastKw) return;
+        lastKw = kw;
+        fetch('/api/files?all=1').then(function (r) { return r.json(); }).then(function (d) {
+          files = (d && d.files) || [];
+          folders = [];
+          render();
+        }).catch(function () {});
+      } else {
+        lastKw = '';
+        loadFolder();
+      }
+    }, 300);
+  });
+
+  /* 自定义主题色 */
+  function applyAccentColor(hex) {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex || '')) return;
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    var root = document.documentElement;
+    root.style.setProperty('--accent', hex);
+    root.style.setProperty('--accent-soft', 'rgba(' + r + ',' + g + ',' + b + ',.14)');
+  }
+
+  /* 加载站点信息 */
+  fetch('/api/auth/info').then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.siteName) {
+      document.getElementById('siteName').textContent = d.siteName;
+      document.title = '文件下载 - ' + d.siteName;
+    }
+    applyLogo((d && d.logo) || '');
+    applyFavicon((d && d.logo) || '');
+    if (d && d.accentColor) applyAccentColor(d.accentColor);
+    // 取件码功能关闭时隐藏取件码输入框
+    if (d && d.features && d.features.shareCodes === false) {
+      var cb = document.getElementById('codeBox');
+      if (cb) cb.style.display = 'none';
+    }
+  }).catch(function () {});
+
+  /* ---------- 下载与人机验证码弹窗 ---------- */
+  var capPending = null; // 当前验证码弹窗挂起的文件 id
+
+  function capShow(errMsg) {
+    document.getElementById('capErr').textContent = errMsg || '';
+    document.getElementById('capInput').value = '';
+    document.getElementById('capMask').style.display = '';
+    capRefresh();
+    var input = document.getElementById('capInput');
+    setTimeout(function () { input.focus(); }, 50);
+  }
+
+  function capHide() {
+    document.getElementById('capMask').style.display = 'none';
+    capPending = null;
+  }
+
+  /* 获取新验证码并展示；图片加载失败时提示重试 */
+  function capRefresh() {
+    var img = document.getElementById('capImg');
+    fetch('/api/captcha/new')
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (o) {
+        if (!o.ok || !o.d.captchaId) {
+          document.getElementById('capErr').textContent = (o.d && o.d.error) || '验证码获取失败，请重试';
+          return;
+        }
+        capPending = { action: capPending && capPending.action, target: capPending && capPending.target, captchaId: o.d.captchaId };
+        img.src = '/api/captcha/img?c=' + o.d.captchaId + '&t=' + Date.now();
+      })
+      .catch(function () {
+        document.getElementById('capErr').textContent = '网络异常，请重试';
+      });
+  }
+
+  /** 发起下载：未登录且后端要求验证码时弹出验证框，验证通过后自动重试 */
+  function startDownload(fileId) {
+    var body = {};
+    if (capPending && capPending.action === 'download' && capPending.target === fileId && capPending.captchaId) {
+      body.captchaId = capPending.captchaId;
+      body.captchaAnswer = document.getElementById('capInput').value.trim();
+    }
+    var sending = Object.keys(body).length > 0;
+    fetch('/api/files/' + fileId + '/download', {
+      method: 'POST',
+      headers: sending ? { 'Content-Type': 'application/json' } : {},
+      body: sending ? JSON.stringify(body) : undefined
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      })
+      .then(function (o) {
+        var d = o.d || {};
+        if (o.ok && d.url) {
+          capHide();
+          window.location.href = d.url;
+          return;
+        }
+        if (d.requireCaptcha) {
+          capPending = { action: 'download', target: fileId, captchaId: capPending && capPending.captchaId };
+          var msg = (d.error && d.error !== 'need_captcha') ? d.error : '';
+          capShow(msg);
+          return;
+        }
+        toast(d.error || '请求过于频繁，请稍后再试');
+      })
+      .catch(function () { toast('下载失败，请重试'); });
+  }
+
+  /** 发起文件夹打包下载：与单文件下载一致，未登录需通过人机验证 */
+  function startZipRequest(folderId) {
+    var body = { folderId: folderId };
+    if (capPending && capPending.action === 'zip' && capPending.target === folderId && capPending.captchaId) {
+      body.captchaId = capPending.captchaId;
+      body.captchaAnswer = document.getElementById('capInput').value.trim();
+    }
+    fetch('/api/files/zip-request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      })
+      .then(function (o) {
+        var d = o.d || {};
+        if (o.ok && d.url) {
+          capHide();
+          window.location.href = d.url;
+          return;
+        }
+        if (d.requireCaptcha) {
+          capPending = { action: 'zip', target: folderId, captchaId: capPending && capPending.captchaId };
+          var msg = (d.error && d.error !== 'need_captcha') ? d.error : '';
+          capShow(msg);
+          return;
+        }
+        toast(d.error || '请求过于频繁，请稍后再试');
+      })
+      .catch(function () { toast('打包失败，请重试'); });
+  }
+
+  /* 验证码弹窗交互 */
+  document.getElementById('capImg').addEventListener('click', capRefresh);
+  document.getElementById('capCancel').addEventListener('click', capHide);
+  document.getElementById('capConfirm').addEventListener('click', function () {
+    if (!capPending || !capPending.target) return;
+    var answer = document.getElementById('capInput').value.trim();
+    if (!answer) {
+      document.getElementById('capErr').textContent = '请输入验证码';
+      return;
+    }
+    if (capPending.action === 'zip') startZipRequest(capPending.target);
+    else startDownload(capPending.target);
+  });
+  document.getElementById('capInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('capConfirm').click();
+    }
+  });
+  document.getElementById('capMask').addEventListener('click', function (e) {
+    if (e.target === this) capHide();
+  });
+
+  /* 按文件夹加载文件列表 */
+  function loadFolder() {
+    fetch('/api/files?folder=' + encodeURIComponent(curFolder))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        files = (d && d.files) || [];
+        folders = (d && d.folders) || [];
+        allFolders = (d && d.allFolders) || [];
+        render();
+      })
+      .catch(function () {
+        toast('加载失败，请刷新重试');
+      });
+  }
+
+  loadFolder();
+
+  /* ---------- Markdown 渲染（零依赖，先转义再解析，防 XSS） ---------- */
+  function mdEscape(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  /** 校验 Markdown 链接/图片地址：仅允许 http(s) 与相对路径，拦截 javascript: 等伪协议 */
+  function mdSafeUrl(u) {
+    var s = String(u || '').trim();
+    // 反转义常见实体便于判断
+    var t = s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    // 剥离全部空白与控制字符后再判断协议：浏览器解析 URL 时会忽略其中的控制字符，
+    // 如 "java\nscript:" 仍会被当作 javascript: 执行
+    var stripped = t.replace(/[\s\u0000-\u001f\u007f]/g, '').toLowerCase();
+    if (stripped.indexOf('javascript:') === 0 || stripped.indexOf('vbscript:') === 0 ||
+        stripped.indexOf('data:') === 0) return '#';
+    return s;
+  }
+  /** 行内格式：代码、图片、链接、加粗、斜体、删除线（输入为已转义文本） */
+  function mdInline(text) {
+    // 行内代码先抽出保护
+    var codes = [];
+    text = text.replace(/`([^`]+)`/g, function (m, c) {
+      codes.push(c);
+      return '\u0000' + (codes.length - 1) + '\u0000';
+    });
+    // 图片 ![alt](url)
+    text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;[^&]*&quot;)?\)/g, function (m, alt, url) {
+      return '<img src="' + mdSafeUrl(url) + '" alt="' + alt + '" loading="lazy">';
+    });
+    // 链接 [text](url)
+    text = text.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+&quot;[^&]*&quot;)?\)/g, function (m, label, url) {
+      return '<a href="' + mdSafeUrl(url) + '" target="_blank" rel="noopener noreferrer">' + label + '</a>';
+    });
+    // 裸链接（http/https 开头）
+    text = text.replace(/(^|[^"'>=\(])(https?:\/\/[^\s<]+)/g, function (m, pre, url) {
+      return pre + '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + '</a>';
+    });
+    // 加粗 / 斜体 / 删除线
+    text = text.replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>');
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    text = text.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
+    text = text.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+    // 还原行内代码
+    text = text.replace(/\u0000(\d+)\u0000/g, function (m, i) {
+      return '<code>' + codes[parseInt(i, 10)] + '</code>';
+    });
+    return text;
+  }
+  /** 将 Markdown 文本渲染为 HTML（输入先整体转义，保证安全） */
+  function renderMarkdown(src) {
+    var lines = mdEscape(src).replace(/\r\n?/g, '\n').split('\n');
+    var html = []; var i = 0;
+    var listStack = []; // 当前打开的列表标签栈
+
+    function closeLists(toDepth) {
+      while (listStack.length > toDepth) html.push('</' + listStack.pop() + '>');
+    }
+    function closeAllLists() { closeLists(0); }
+
+    while (i < lines.length) {
+      var line = lines[i];
+
+      // 代码块
+      var fence = line.match(/^\s*```(\w*)\s*$/);
+      if (fence) {
+        closeAllLists();
+        var buf = [];
+        i++;
+        while (i < lines.length && !/^\s*```\s*$/.test(lines[i])) { buf.push(lines[i]); i++; }
+        i++; // 跳过结尾 ```
+        html.push('<pre><code' + (fence[1] ? ' class="lang-' + fence[1] + '"' : '') + '>' + buf.join('\n') + '</code></pre>');
+        continue;
+      }
+      // 标题
+      var h = line.match(/^(#{1,6})\s+(.+)$/);
+      if (h) {
+        closeAllLists();
+        var lvl = h[1].length;
+        html.push('<h' + lvl + '>' + mdInline(h[2]) + '</h' + lvl + '>');
+        i++; continue;
+      }
+      // 水平线
+      if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+        closeAllLists();
+        html.push('<hr>');
+        i++; continue;
+      }
+      // 引用块
+      if (/^\s*&gt;\s?/.test(line)) {
+        closeAllLists();
+        var qbuf = [];
+        while (i < lines.length && /^\s*&gt;\s?/.test(lines[i])) {
+          qbuf.push(lines[i].replace(/^\s*&gt;\s?/, ''));
+          i++;
+        }
+        html.push('<blockquote>' + qbuf.map(function (q) { return '<p>' + mdInline(q) + '</p>'; }).join('') + '</blockquote>');
+        continue;
+      }
+      // 表格（当前行含 | 且下一行是分隔行）
+      if (line.indexOf('|') >= 0 && i + 1 < lines.length && /^\s*\|?[\s:-]+\|[\s:|-]*$/.test(lines[i + 1])) {
+        closeAllLists();
+        var parseRow = function (r) {
+          return r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map(function (c) { return c.trim(); });
+        };
+        var thead = parseRow(line);
+        i += 2;
+        var tbody = [];
+        while (i < lines.length && lines[i].indexOf('|') >= 0 && lines[i].trim() !== '') {
+          tbody.push(parseRow(lines[i]));
+          i++;
+        }
+        var t = '<table><thead><tr>';
+        thead.forEach(function (c) { t += '<th>' + mdInline(c) + '</th>'; });
+        t += '</tr></thead><tbody>';
+        tbody.forEach(function (row) {
+          t += '<tr>';
+          for (var ci = 0; ci < thead.length; ci++) t += '<td>' + mdInline(row[ci] || '') + '</td>';
+          t += '</tr>';
+        });
+        t += '</tbody></table>';
+        html.push(t);
+        continue;
+      }
+      // 列表（含任务列表）
+      var ul = line.match(/^(\s*)[-*+]\s+(.+)$/);
+      var ol = line.match(/^(\s*)\d+[.)]\s+(.+)$/);
+      if (ul || ol) {
+        var depth = Math.floor(((ul || ol)[1].replace(/\t/g, '  ')).length / 2) + 1;
+        var tag = ul ? 'ul' : 'ol';
+        var content = (ul || ol)[2];
+        if (depth < listStack.length) closeLists(depth);
+        while (listStack.length < depth) {
+          html.push('<' + tag + '>');
+          listStack.push(tag);
+        }
+        var task = content.match(/^\[([ xX])\]\s+(.*)$/);
+        if (task) {
+          var checked = task[1].toLowerCase() === 'x';
+          html.push('<li class="md-task">' +
+            '<input type="checkbox" disabled' + (checked ? ' checked' : '') + '> ' + mdInline(task[2]) + '</li>');
+        } else {
+          html.push('<li>' + mdInline(content) + '</li>');
+        }
+        i++; continue;
+      }
+      // 空行
+      if (line.trim() === '') {
+        closeAllLists();
+        i++; continue;
+      }
+      // 段落
+      closeAllLists();
+      var pbuf = [line];
+      i++;
+      while (i < lines.length && lines[i].trim() !== '' &&
+             !/^(#{1,6})\s/.test(lines[i]) && !/^\s*```/.test(lines[i]) &&
+             !/^\s*&gt;/.test(lines[i]) && !/^\s*[-*+]\s+/.test(lines[i]) &&
+             !/^\s*\d+[.)]\s+/.test(lines[i]) && lines[i].indexOf('|') < 0) {
+        pbuf.push(lines[i]);
+        i++;
+      }
+      html.push('<p>' + pbuf.map(mdInline).join('<br>') + '</p>');
+    }
+    closeAllLists();
+    return html.join('\n');
+  }
+
+  /* ---------- 代码预览（行号 + 轻量语法高亮，纯展示不执行） ---------- */
+  var CODE_EXTS = ['js', 'ts', 'css', 'py', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'php', 'rb', 'sh', 'bat', 'ps1', 'sql', 'yaml', 'yml', 'ini', 'conf', 'env', 'vue', 'json', 'xml', 'csv', 'log', 'txt'];
+  var CODE_HL_EXTS = ['js', 'ts', 'css', 'py', 'java', 'c', 'cpp', 'h', 'go', 'rs', 'php', 'rb', 'sh', 'sql', 'json', 'xml', 'yaml', 'yml'];
+  var CODE_KEYWORDS = 'function|return|if|else|for|while|switch|case|break|continue|new|var|let|const|class|extends|import|export|from|default|try|catch|finally|throw|async|await|typeof|instanceof|in|of|this|null|undefined|true|false|void|delete|yield|static|get|set|def|lambda|self|None|True|False|elif|except|raise|with|as|pass|global|nonlocal|public|private|protected|int|long|float|double|char|bool|boolean|string|str|struct|interface|package|fn|mut|impl|trait|use|mod|echo|print|printf|require|include|SELECT|FROM|WHERE|INSERT|UPDATE|DELETE|CREATE|TABLE|AND|OR|NOT|ORDER|BY|GROUP|LIMIT|JOIN|LEFT|RIGHT|INNER|ON|AS';
+
+  /** 对单行代码做轻量高亮（输入已转义）。
+   *  命中项先替换为占位符、最后统一还原；占位符用纯字母编码索引，
+   *  避免占位符中的数字被后续数字高亮规则二次匹配破坏 */
+  function highlightLine(escapedLine) {
+    var tokens = [];
+    function placeholder(i) {
+      var s = '';
+      do { s = String.fromCharCode(97 + (i % 26)) + s; i = Math.floor(i / 26) - 1; } while (i >= 0);
+      return '\u0000' + s + '\u0000';
+    }
+    var stash = function (html) {
+      tokens.push(html);
+      return placeholder(tokens.length - 1);
+    };
+    var s = escapedLine;
+    // 1. 字符串优先（防止字符串内的 // 或 # 被误判为注释）
+    s = s.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;|&#39;(?:[^&]|&(?!#39;))*?&#39;|`[^`]*`)/g, function (m) {
+      return stash('<span class="tk-str">' + m + '</span>');
+    });
+    // 2. 注释（行尾 // 与 # 开头；简单处理）
+    s = s.replace(/(\/\/.*$|#.*$)/, function (m) { return stash('<span class="tk-com">' + m + '</span>'); });
+    // 3. 数字
+    s = s.replace(/\b(\d+\.?\d*)\b/g, function (m) { return stash('<span class="tk-num">' + m + '</span>'); });
+    // 4. 关键字（此时文本中只剩占位符，不会误伤已生成的 HTML）
+    var kwRe = new RegExp('\\b(' + CODE_KEYWORDS + ')\\b', 'g');
+    s = s.replace(kwRe, '<span class="tk-key">$1</span>');
+    // 5. 还原占位（字母索引反解）
+    s = s.replace(/\u0000([a-z]+)\u0000/g, function (m, code) {
+      var idx = 0;
+      for (var k = 0; k < code.length; k++) idx = idx * 26 + (code.charCodeAt(k) - 96);
+      return tokens[idx - 1] || '';
+    });
+    return s;
+  }
+
+  /** 渲染代码预览 DOM（行号 + 高亮） */
+  function renderCodePreview(body, text, ext) {
+    var container = document.createElement('div');
+    container.className = 'pv-code';
+    var lines = text.split(/\r\n?|\n/);
+    if (lines.length > 3000) lines = lines.slice(0, 3000); // 超长截断防卡顿
+    var doHl = CODE_HL_EXTS.indexOf(ext) >= 0;
+    var html = [];
+    lines.forEach(function (ln, idx) {
+      var escaped = mdEscape(ln);
+      html.push('<div class="code-line"><span class="ln">' + (idx + 1) + '</span><span class="lc">' +
+        (doHl ? highlightLine(escaped) : escaped) + '</span></div>');
+    });
+    container.innerHTML = html.join('');
+    body.innerHTML = '';
+    body.appendChild(container);
+  }
+
+  /* ---------- 文件预览 ---------- */
+  function openPreview(f) {
+    var mask = document.getElementById('pvMask');
+    var body = document.getElementById('pvBody');
+    var title = document.getElementById('pvTitle');
+    var dlLink = document.getElementById('pvDownload');
+    title.textContent = f.name;
+    dlLink.onclick = function () { startDownload(f.id); };
+    body.innerHTML = '<div class="pv-loading">正在检查预览…</div>';
+    mask.style.display = '';
+    fetch('/api/files/' + f.id + '/preview')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || !d.previewable) {
+          // 服务端返回的 reason 即使当前可信，也用 textContent 写入，避免未来接口改动引入 DOM 注入
+          body.innerHTML = '';
+          var reasonEl = document.createElement('div');
+          reasonEl.className = 'pv-loading';
+          reasonEl.textContent = (d && d.reason) || '该文件类型不支持在线预览，请下载后查看';
+          body.appendChild(reasonEl);
+          return;
+        }
+        body.innerHTML = '';
+        if (d.kind === 'image') {
+          var img = document.createElement('img');
+          img.src = d.url; img.alt = f.name;
+          body.appendChild(img);
+        } else if (d.kind === 'video') {
+          var v = document.createElement('video');
+          v.src = d.url; v.controls = true; v.autoplay = false;
+          body.appendChild(v);
+        } else if (d.kind === 'audio') {
+          var a = document.createElement('audio');
+          a.src = d.url; a.controls = true;
+          body.appendChild(a);
+        } else if (d.kind === 'pdf') {
+          var iframe = document.createElement('iframe');
+          iframe.src = d.url;
+          body.appendChild(iframe);
+        } else if (d.kind === 'text') {
+          var ext = String(f.name.split('.').pop() || '').toLowerCase();
+          fetch(d.url).then(function (r) { return r.text(); }).then(function (txt) {
+            body.innerHTML = '';
+            if (ext === 'md') {
+              // Markdown 渲染预览
+              var md = document.createElement('div');
+              md.className = 'pv-md';
+              md.innerHTML = renderMarkdown(txt);
+              body.appendChild(md);
+            } else if (CODE_EXTS.indexOf(ext) >= 0) {
+              // 代码/配置文件：行号 + 轻量语法高亮
+              renderCodePreview(body, txt, ext);
+            } else {
+              var pre = document.createElement('div');
+              pre.className = 'pv-text';
+              pre.textContent = txt;
+              body.appendChild(pre);
+            }
+          }).catch(function () {
+            body.innerHTML = '<div class="pv-loading">文本加载失败，请下载后查看</div>';
+          });
+        }
+      })
+      .catch(function () {
+        body.innerHTML = '<div class="pv-loading">预览请求失败，请重试</div>';
+      });
+  }
+  document.getElementById('pvClose').addEventListener('click', function () {
+    document.getElementById('pvMask').style.display = 'none';
+    document.getElementById('pvBody').innerHTML = '';
+  });
+  document.getElementById('pvMask').addEventListener('click', function (e) {
+    if (e.target === this) {
+      this.style.display = 'none';
+      document.getElementById('pvBody').innerHTML = '';
+    }
+  });
+
+  /* ---------- 取件码 ---------- */
+  function redeemShareCode(code) {
+    code = String(code || '').trim().toUpperCase();
+    if (!code) return;
+    fetch('/api/share/' + encodeURIComponent(code))
+      .then(function (r) {
+        return r.json().then(function (d) {
+          if (!r.ok) {
+            toast((d && d.error) || '取件码无效或已过期');
+            return null;
+          }
+          return d;
+        });
+      })
+      .then(function (d) {
+        if (!d || !d.url) return;
+        toast('取件成功：' + d.name + '（' + fmtSize(d.size) + '）');
+        window.location.href = d.url;
+      })
+      .catch(function () { toast('取件失败，请重试'); });
+  }
+  document.getElementById('shareCodeBtn').addEventListener('click', function () {
+    redeemShareCode(document.getElementById('shareCodeInput').value);
+  });
+  document.getElementById('shareCodeInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') redeemShareCode(this.value);
+  });
+  // URL 带 ?code= 时自动取件（分享链接直达）
+  var urlCode = (new URLSearchParams(location.search)).get('code');
+  if (urlCode) redeemShareCode(urlCode);
+})();
+</script>
+</body>
+</html>

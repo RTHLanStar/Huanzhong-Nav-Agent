@@ -1,0 +1,17 @@
+# 本地运行时数据（全部由服务端自动生成，不应入库）
+data/
+.review-regression-data-*/
+
+# 节点代理本地配置（含真实节点令牌，禁止提交）
+node-agent.config.json
+
+# 节点代理文件根目录
+node-files/
+files/
+
+# 上传临时分片
+.upload-*.part
+
+# 依赖与日志
+node_modules/
+*.log

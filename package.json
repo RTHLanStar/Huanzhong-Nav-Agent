@@ -1,0 +1,14 @@
+{
+  "name": "huanzhong-nav",
+  "version": "1.0.0",
+  "description": "幻终の导航 - 轻量级网址导航系统（零依赖，Node.js 单文件后端 + 本地 JSON 数据库）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node review-regression.js"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "license": "MIT"
+}
