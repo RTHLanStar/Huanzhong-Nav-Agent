@@ -15,3 +15,8 @@ files/
 # 依赖与日志
 node_modules/
 *.log
+
+# 本地工作环境与构建产物
+.workbuddy/
+releases/
+.deploy/

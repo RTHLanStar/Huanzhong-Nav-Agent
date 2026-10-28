@@ -96,7 +96,7 @@
 
 /* ── Buttons ───────────────────────────────────────────────── */
 /* @anatomy
-   <span class="size-tag" style="margin:0;">Brand · max 1 per page</span><button class="ds-btn ds-btn--brand"><img src="../assets/icons/zap.0c0c0d.svg" width="14" height="14" alt="zap" class="icon"><span>Generate spec</span></button>
+   <span class="size-tag" style="margin:0;">Brand · max 1 per page</span><button class="ds-btn ds-btn--brand"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11" /></svg><span>Generate spec</span></button>
 */
 /* ===== Buttons =====
      * Hierarchy (one BRAND/green CTA per page max):
@@ -484,7 +484,7 @@
 
 /* ── Forms ─────────────────────────────────────────────────── */
 /* @anatomy
-   <button class="ds-btn ds-btn--secondary"><span>Sort by</span><img src="../assets/icons/chevron-down.svg" width="14" height="14" alt="chevron-down" class="icon"></button> <div class="ds-popover" style="margin-left: -120px; margin-top: 36px;"> <div class="ds-menu" style="border:none; padding: 0; min-width: 180px;"> <div class="ds-menu__item"><span>Most recent</span><img src="../assets/icons/check...
+   <button class="ds-btn ds-btn--secondary"><span>Sort by</span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M6 9l6 6l6 -6" /></svg></button> <div class="ds-popover" style="margin-left: -120px; margin-top: 36px;"> <div class="ds-menu" style="border:none; padding: 0; min-width: 180px;"> <div class="ds-menu__item"><span>Most recent</span><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" aria-hidden="true"><path d="M5 12l5 5l10 -10" /></svg>...
 */
 /* ===== Input / Search ===== */
     .ds-input {
@@ -944,7 +944,7 @@
 
 /* ── Pagination ────────────────────────────────────────────── */
 /* @anatomy
-   <div class="ds-pagination"> <button class="ds-pagination__item" aria-label="Previous"><img src="../assets/icons/chevron-right.svg" width="12" height="12" alt="chevron-right" class="icon" style="transform: rotate(180deg);"></button> <button class="ds-pagination__item is-active num">1</button> <button class="ds-pagination__item num">2</button> <button class="ds-pagination__item num">3</button> <b...
+   <div class="ds-pagination"> <button class="ds-pagination__item" aria-label="Previous"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon" style="transform: rotate(180deg);" aria-hidden="true"><path d="M9 6l6 6l-6 6" /></svg></button> <button class="ds-pagination__item is-active num">1</button> <button class="ds-pagination__item num">2</button> <button class="ds-pagination__item num">3</button> <b...
 */
 /* ===== Pagination ===== */
     .ds-pagination { display: inline-flex; gap: var(--spacer-4); }

@@ -1,0 +1,30 @@
+[
+  {
+    "name": "百度",
+    "url": "https://www.baidu.com",
+    "desc": "全球最大的中文搜索引擎",
+    "category": "常用",
+    "icon": ""
+  },
+  {
+    "name": "哔哩哔哩",
+    "url": "https://www.bilibili.com",
+    "desc": "国内知名的视频弹幕网站",
+    "category": "娱乐",
+    "icon": ""
+  },
+  {
+    "name": "知乎",
+    "url": "https://www.zhihu.com",
+    "desc": "有问题，就会有答案",
+    "category": "社区",
+    "icon": ""
+  },
+  {
+    "name": "GitHub",
+    "url": "https://github.com",
+    "desc": "全球最大的代码托管平台",
+    "category": "工具",
+    "icon": ""
+  }
+]

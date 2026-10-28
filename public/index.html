@@ -3,6 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#f5f5f7" id="themeColor">
+<script>
+(function () {
+  try {
+    var t = localStorage.getItem('ht_theme');
+    if (t !== 'dark' && t !== 'light') {
+      t = (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('data-theme', t);
+  } catch (e) {}
+})();
+</script>
 <link id="pageFavicon" rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='20' fill='%231d1d1f'/%3E%3Ctext x='32' y='43' text-anchor='middle' font-size='34' font-family='Arial,sans-serif' font-weight='700' fill='white'%3E%E5%B9%BB%3C/text%3E%3C/svg%3E">
 <title>幻终の导航</title>
 <style>
@@ -180,7 +192,7 @@ body.modal-open { overflow: hidden; }
   padding: 12px 14px; border-radius: 18px;
   border: 1px solid var(--card-border); margin-bottom: 12px;
   text-decoration: none; color: var(--text);
-  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;, border-color .15s;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;
 }
 .qq-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--accent); }
 .qq-item:last-child { margin-bottom: 0; }
@@ -428,7 +440,7 @@ body[data-layout="list"] .card .fav-btn.on { color: #facc15; }
   padding: 8px 14px; border-radius: 18px;
   background: var(--card-bg); border: 1px solid var(--card-border);
   color: var(--text); text-decoration: none; font-size: 13px;
-  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;, border-color .15s;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;
 }
 .popular-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: var(--accent); }
 .popular-item .p-rank { font-weight: 700; color: var(--accent); font-size: 12px; }
@@ -499,7 +511,7 @@ body[data-layout="list"] .card .fav-btn.on { color: #facc15; }
   border-radius: 18px; padding: 16px 20px;
   box-shadow: var(--shadow);
   text-decoration: none; color: var(--text);
-  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;, border-color .15s;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .15s;
 }
 .dl-entry-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .dl-entry-icon {
@@ -523,7 +535,20 @@ body[data-layout="list"] .card .fav-btn.on { color: #facc15; }
 footer {
   text-align: center; color: var(--text-2); font-size: 12px;
   padding: 40px 0 10px;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px;
 }
+.footer-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  color: var(--text-2); text-decoration: none;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--card-border); background: var(--card-bg);
+  transition: color .2s, border-color .2s, transform .2s;
+}
+.footer-status::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ok, #34c759);
+  box-shadow: 0 0 0 3px rgba(52,199,89,.14);
+}
+.footer-status:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
 @media (max-width: 560px) {
   header { padding: 14px 16px; }
   .brand h1 { font-size: 18px; }
@@ -586,7 +611,507 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   transition: opacity .3s var(--ease-apple), transform .3s var(--ease-apple);
 }
 </style>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style id="ui-v2">
+/* ============================================================
+   视觉升级：更通透的玻璃质感、稳定的布局与更清晰的层次
+   ============================================================ */
+:root {
+  --bg-grad:
+    radial-gradient(900px 520px at 8% -12%, rgba(0, 122, 255, .10), transparent 62%),
+    radial-gradient(760px 440px at 100% 0%, rgba(52, 199, 89, .08), transparent 58%),
+    #f5f5f7;
+  --card-glass: rgba(255, 255, 255, .78);
+  --header-bg: rgba(245, 245, 247, .74);
+  --header-border: rgba(60, 60, 67, .10);
+  --tile-grad: linear-gradient(145deg, var(--accent-soft), rgba(255, 255, 255, .62));
+  --text-3: #a1a1a6;
+  --ok: #34c759;
+  --danger: #e5484d;
+  --card: var(--card-bg);
+  --shadow-sm: 0 8px 22px -14px rgba(0, 0, 0, .18);
+  --shadow-md: 0 16px 36px -20px rgba(0, 0, 0, .22), 0 2px 8px -4px rgba(0, 0, 0, .06);
+  --shadow-lg: 0 28px 70px -28px rgba(0, 0, 0, .28), 0 4px 14px -8px rgba(0, 0, 0, .08);
+  --brand-solid: var(--accent);
+}
+[data-theme="dark"] {
+  --bg-grad:
+    radial-gradient(900px 520px at 8% -12%, rgba(10, 132, 255, .18), transparent 62%),
+    radial-gradient(760px 440px at 100% 0%, rgba(48, 209, 88, .08), transparent 58%),
+    #000;
+  --card-glass: rgba(28, 28, 30, .76);
+  --header-bg: rgba(0, 0, 0, .66);
+  --header-border: rgba(255, 255, 255, .09);
+  --tile-grad: linear-gradient(145deg, var(--accent-soft), rgba(255, 255, 255, .035));
+  --text-3: #6e6e73;
+  --ok: #30d158;
+  --danger: #ff453a;
+  --shadow-sm: 0 10px 26px -18px rgba(0, 0, 0, .8);
+  --shadow-md: 0 18px 40px -22px rgba(0, 0, 0, .9), 0 2px 8px -4px rgba(0, 0, 0, .5);
+  --shadow-lg: 0 32px 80px -32px rgba(0, 0, 0, .95), 0 4px 16px -8px rgba(0, 0, 0, .6);
+  --brand-solid: var(--accent);
+}
+html { color-scheme: light; scroll-behavior: smooth; }
+html[data-theme="dark"] { color-scheme: dark; }
+body {
+  background: var(--bg-grad) fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+::selection { background: var(--accent-soft); color: var(--text); }
+body.has-custom-bg::before,
+body.has-custom-bg::after { display: none !important; }
+
+/* 顶栏：滚动时保持轻盈，不再抢占页面空间 */
+header {
+  position: sticky; top: 0; z-index: 200;
+  padding: 12px max(20px, calc((100% - 1100px) / 2 + 20px));
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--header-border);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  transition: background .25s var(--ease-apple), border-color .25s var(--ease-apple);
+}
+.brand { gap: 11px; min-width: 0; }
+.brand .logo {
+  width: 42px; height: 42px; flex: 0 0 42px;
+  border-radius: 13px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 10px 22px -12px var(--accent);
+  overflow: hidden;
+}
+.brand h1 {
+  font-size: 20px; font-weight: 700; letter-spacing: .02em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.actions { gap: 8px; flex: 0 0 auto; }
+.icon-btn {
+  width: 40px; height: 40px; flex: 0 0 40px;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  color: var(--text);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: transform .18s var(--ease-apple), box-shadow .18s var(--ease-apple),
+              border-color .18s var(--ease-apple), background .18s var(--ease-apple);
+}
+.icon-btn:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+.icon-btn:active { transform: scale(.95); }
+.icon-btn svg { display: block; }
+
+/* 时钟与搜索区 */
+.wrap { padding: 26px 20px 64px; }
+.hero { margin: 20px 0 4px; }
+.hero .clock {
+  font-size: 42px; font-weight: 700; line-height: 1.08;
+  letter-spacing: .035em; font-variant-numeric: tabular-nums;
+}
+.hero .greet { font-size: 13.5px; margin-top: 8px; color: var(--text-2); }
+.quote-line { max-width: 680px; margin-top: 12px; font-size: 13px; line-height: 1.7; }
+
+.search-box { max-width: 660px; margin: 22px auto 10px; }
+.search-box input {
+  height: 54px;
+  padding: 15px 50px 15px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  font-size: var(--fs-base);
+  transition: border-color .2s var(--ease-apple), box-shadow .2s var(--ease-apple),
+              background .2s var(--ease-apple);
+}
+.search-box input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow-sm);
+}
+.search-box .s-icon { right: 18px; color: var(--text-3); transition: color .2s; }
+.search-box:focus-within .s-icon { color: var(--accent); }
+.search-hint { font-size: 12px; color: var(--text-3); line-height: 1.6; }
+
+/* 搜索引擎直达 */
+.engines { gap: 8px; margin: 14px auto 8px; }
+.engine {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 2px; padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  color: var(--text-2);
+  font-size: 13px; font-weight: 500;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: color .18s, border-color .18s, background .18s, transform .18s;
+}
+.engine:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-1px); }
+.engine.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.engine-check {
+  display: inline-block; width: 13px; margin-left: 1px;
+  opacity: 0; transform: scale(.7);
+  transition: opacity .15s, transform .15s;
+}
+.engine.active .engine-check { opacity: 1; transform: scale(1); }
+
+/* 公告、小组件与筛选 */
+.announce {
+  max-width: 860px; margin: 18px auto 4px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  background: linear-gradient(135deg, var(--accent-soft), transparent 65%), var(--card-glass);
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  line-height: 1.55;
+}
+.announce:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); border-color: var(--accent); }
+.announce .more { font-weight: 600; }
+.widget-row { gap: 8px; margin-top: 12px; }
+.mini-widget {
+  padding: 7px 13px;
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  border-radius: 999px;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.mini-widget:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.countdown-row { gap: 8px; margin-top: 14px; }
+.cd-item { border-radius: 999px; background: var(--card-glass); box-shadow: var(--shadow-sm); }
+
+.categories { gap: 8px; margin: 22px 0 20px; }
+.cat-chip {
+  padding: 8px 16px;
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  color: var(--text-2);
+  border-radius: 999px;
+  font-weight: 500;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: color .18s, border-color .18s, background .18s, transform .18s, box-shadow .18s;
+}
+.cat-chip:hover { transform: translateY(-1px); color: var(--accent); border-color: var(--accent); }
+.cat-chip.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: transparent;
+  box-shadow: 0 8px 18px -10px var(--accent);
+  font-weight: 600;
+}
+
+/* 最近使用 / 热门 / 友链 */
+.recent-wrap { margin-top: 16px; }
+.recent-title, .popular-title, .friends-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .12em;
+  color: var(--text-3); margin-bottom: 10px;
+}
+.recent-item, .popular-item, .friend-link {
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: color .18s, border-color .18s, transform .18s, box-shadow .18s;
+}
+.recent-item:hover, .popular-item:hover, .friend-link:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: var(--shadow-md);
+}
+.popular-wrap { margin-top: 22px; }
+.friends-wrap { margin-top: 34px; }
+
+/* 卡片：把图标收进独立图标区，文字回到卡片底色，层次更干净 */
+.grid { grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 18px; }
+.card {
+  padding: 12px;
+  border-radius: 20px;
+  border: 1px solid var(--card-border);
+  background: var(--card-glass);
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  transition: transform .22s var(--ease-apple), box-shadow .22s var(--ease-apple),
+              border-color .18s var(--ease-apple), background .22s var(--ease-apple);
+}
+.card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-lg);
+}
+.card .initial {
+  inset: 12px 12px 56px;
+  border-radius: 14px;
+  background: var(--tile-grad);
+  background-repeat: no-repeat;
+  background-position: center;
+  color: var(--accent);
+  font-size: 38px;
+  font-weight: 700;
+  z-index: 0;
+}
+.card .cover {
+  inset: 12px 12px 56px;
+  border-radius: 14px;
+  background-size: 58px 58px;
+  background-position: center;
+  background-repeat: no-repeat;
+  z-index: 1;
+  pointer-events: none;
+  transition: transform .22s var(--ease-apple);
+}
+.card:hover .cover { transform: scale(1.04); }
+.card .cover-mask { display: none; }
+body:not([data-layout="list"]) .card.has-icon .initial { color: transparent; }
+.card .info { padding: 8px 4px 2px; color: var(--text); min-width: 0; }
+.card .info .name {
+  font-size: var(--fs-name);
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card .info .desc {
+  margin-top: 4px;
+  font-size: var(--fs-desc);
+  color: var(--text-2);
+  line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.card .fav-btn {
+  top: 10px; right: 10px;
+  width: 30px; height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--text-2);
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transition: opacity .16s, color .16s, background .16s, transform .16s;
+}
+.card .fav-btn:hover { color: #f5b301; transform: scale(1.06); }
+.card:hover .fav-btn, .card .fav-btn.on { opacity: 1; }
+.card .fav-btn.on { color: #f5b301; background: var(--card-bg); }
+@media (hover: none) { .card .fav-btn { opacity: .92; } }
+
+body[data-layout="compact"] .grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+body[data-layout="compact"] .card { padding: 9px; border-radius: 16px; }
+body[data-layout="compact"] .card .initial,
+body[data-layout="compact"] .card .cover {
+  inset: 9px 9px 36px; border-radius: 11px;
+  background-size: 38px 38px;
+}
+body[data-layout="compact"] .card .initial { font-size: 28px; }
+body[data-layout="compact"] .card .info { padding: 6px 2px 0; }
+body[data-layout="list"] .card {
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: var(--card-glass);
+  box-shadow: var(--shadow-sm);
+}
+body[data-layout="list"] .card .initial {
+  border-radius: 12px;
+  background: var(--tile-grad);
+  color: var(--accent);
+}
+body[data-layout="list"] .card .info .name { font-size: var(--fs-name); }
+body[data-layout="list"] .card .info .desc { font-size: var(--fs-desc); }
+
+/* 搜索联想 */
+.suggest-box {
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.suggest-item { padding: 11px 16px; font-size: 14px; }
+.suggest-item.hl { background: var(--accent-soft); }
+.suggest-item .sg-tag { color: var(--text-3); font-weight: 600; }
+
+/* 弹窗与表单 */
+body.modal-open { overflow: hidden; padding-right: var(--scrollbar-gap, 0px); }
+.ann-modal-mask {
+  background: rgba(10, 12, 20, .48);
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+  padding: 24px;
+  animation: hfFade .18s var(--ease-apple) both;
+}
+.ann-modal {
+  max-height: 86vh;
+  border-radius: 22px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: var(--shadow-lg);
+  animation: hfScale .22s var(--ease-apple) both;
+}
+.ann-modal-head {
+  padding: 16px 20px;
+  background: linear-gradient(180deg, var(--accent-soft), transparent);
+  font-size: 15px;
+}
+.ann-modal-close {
+  width: 30px; height: 30px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  transition: background .15s, color .15s, transform .15s;
+}
+.ann-modal-close:hover { background: var(--accent-soft); color: var(--accent); transform: none; }
+.ann-modal-body { padding: 18px 20px 22px; }
+.ann-item, .qq-item, .cmt-item {
+  border-radius: 14px;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+}
+.ann-item.pinned { border-color: var(--accent); background: var(--accent-soft); }
+.qq-item:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.cmt-form textarea, .cmt-nick, .cmt-cap-row input,
+.fb-form textarea, .fb-form input[type="text"] {
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  transition: border-color .18s, box-shadow .18s;
+}
+.cmt-form textarea:focus, .cmt-nick:focus, .cmt-cap-row input:focus,
+.fb-form textarea:focus, .fb-form input[type="text"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  outline: none;
+}
+.cmt-cap-row img { border-radius: 10px; }
+.prefs-row .prefs-label { color: var(--text-2); }
+.pref-opt {
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  transition: background .16s, border-color .16s, color .16s;
+}
+.pref-opt:hover { background: var(--accent-soft); border-color: var(--accent); }
+.pref-opt.active { background: var(--accent); border-color: transparent; color: #fff; }
+
+/* 下载入口、空状态与页脚 */
+.download-entry { margin-top: 38px; }
+.dl-entry-btn {
+  border-radius: 18px;
+  background: var(--card-glass);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-sm);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: transform .2s var(--ease-apple), box-shadow .2s var(--ease-apple), border-color .2s;
+}
+.dl-entry-btn:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.dl-entry-icon { border-radius: 13px; }
+.empty { padding: 76px 20px; }
+.empty .big { color: var(--text-3); }
+.footer-status { background: var(--card-glass); }
+.toast {
+  z-index: 2100;
+  padding: 11px 20px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: rgba(20, 24, 33, .94);
+  box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: opacity .25s var(--ease-apple), transform .25s var(--ease-apple);
+}
+.toast.show { transform: translate(-50%, -4px); }
+
+/* 只让首次进入的卡片播放一次入场动画，切换筛选/搜索引擎时保持稳定 */
+.card, .file-card, .qq-item, .popular-item, .recent-item, .engine,
+.cat-chip, .announce, .auth-card, .panel, .fm-item { animation: none; }
+@keyframes hfEnter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes hfFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes hfScale {
+  from { opacity: 0; transform: scale(.975); }
+  to { opacity: 1; transform: scale(1); }
+}
+.grid.is-entering .card {
+  animation: hfEnter .42s var(--ease-apple) both;
+  animation-delay: var(--enter-delay, 0ms);
+}
+
+/* 键盘可见焦点 */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+button:focus:not(:focus-visible), a:focus:not(:focus-visible) { outline: none; }
+
+/* 响应式：窄屏下隐藏品牌文字，避免按钮把页面撑出横向滚动 */
+@media (max-width: 560px) {
+  header { padding: 10px 14px; }
+  .brand { gap: 9px; }
+  .brand .logo { width: 38px; height: 38px; flex-basis: 38px; border-radius: 12px; font-size: 18px; }
+  .brand h1 { font-size: 17px; max-width: 120px; }
+  .actions { gap: 6px; }
+  .icon-btn { width: 36px; height: 36px; flex-basis: 36px; border-radius: 11px; }
+  .wrap { padding: 16px 14px 44px; }
+  .hero { margin-top: 14px; }
+  .hero .clock { font-size: 34px; }
+  .search-box { margin-top: 18px; }
+  .search-box input { height: 50px; padding: 13px 46px 13px 17px; }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .card { padding: 9px; border-radius: 17px; }
+  .card .initial, .card .cover {
+    inset: 9px 9px 48px;
+    border-radius: 12px;
+  }
+  .card .cover { background-size: 42px 42px; }
+  .card .initial { font-size: 30px; }
+  .card .info { padding: 6px 2px 0; }
+  .card .info .name { font-size: 13px; }
+  .card .info .desc { font-size: 10.5px; }
+  .card .fav-btn { top: 7px; right: 7px; width: 28px; height: 28px; border-radius: 9px; }
+  .ann-modal-mask { padding: 12px; }
+  .ann-modal { max-height: 88vh; border-radius: 20px; }
+  .ann-modal-body { padding: 16px 16px 20px; }
+  body[data-layout="compact"] .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+}
+@media (max-width: 480px) {
+  header { padding: 9px 12px; }
+  .brand h1 { display: none; }
+  .actions { gap: 5px; }
+  .icon-btn { width: 34px; height: 34px; flex-basis: 34px; }
+}
+@media (max-width: 360px) {
+  .actions { gap: 4px; }
+  .icon-btn { width: 32px; height: 32px; flex-basis: 32px; border-radius: 10px; }
+  .wrap { padding-left: 11px; padding-right: 11px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
+</style>
 </head>
 <body>
 <header>
@@ -595,12 +1120,12 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     <h1 id="siteName">幻终の导航</h1>
   </div>
   <div class="actions">
-    <button class="icon-btn" id="prefsBtn" title="偏好设置"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg></button>
-    <button class="icon-btn" id="feedbackBtn" title="意见反馈"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg></button>
-    <button class="icon-btn" id="commentBtn" title="留言板"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
-    <button class="icon-btn" id="announceBtn" title="公告" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span class="badge-dot" id="annBadge" style="display:none"></span></button>
-    <button class="icon-btn" id="qqBtn" title="加入QQ群" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span class="badge-dot" id="qqBadge" style="display:none"></span></button>
-    <button class="icon-btn" id="themeBtn" title="切换主题"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+    <button class="icon-btn" id="prefsBtn" title="偏好设置"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg></button>
+    <button class="icon-btn" id="feedbackBtn" title="意见反馈"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9h8" /> <path d="M8 13h6" /> <path d="M9 18h-3a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-3l-3 3l-3 -3" /></svg></button>
+    <button class="icon-btn" id="commentBtn" title="留言板"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9h8" /> <path d="M8 13h6" /> <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12" /></svg></button>
+    <button class="icon-btn" id="announceBtn" title="公告" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a3 3 0 0 1 0 6" /> <path d="M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5" /> <path d="M12 8l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8" /></svg><span class="badge-dot" id="annBadge" style="display:none"></span></button>
+    <button class="icon-btn" id="qqBtn" title="加入QQ群" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /> <path d="M16 3.13a4 4 0 0 1 0 7.75" /> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" /></svg><span class="badge-dot" id="qqBadge" style="display:none"></span></button>
+    <button class="icon-btn" id="themeBtn" title="切换主题"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008" /></svg></button>
   </div>
 </header>
 
@@ -613,11 +1138,11 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 
   <div class="widget-row" id="widgetRow" style="display:none">
     <span class="mini-widget" id="weatherWidget" style="display:none" title="天气数据每 10 分钟刷新">
-      <span class="w-ic"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg></span>
+      <span class="w-ic"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.657 18c-2.572 0 -4.657 -2.007 -4.657 -4.483c0 -2.475 2.085 -4.482 4.657 -4.482c.393 -1.762 1.794 -3.2 3.675 -3.773c1.88 -.572 3.956 -.193 5.444 1c1.488 1.19 2.162 3.007 1.77 4.769h.99c1.913 0 3.464 1.56 3.464 3.486c0 1.927 -1.551 3.487 -3.465 3.487h-11.878" /></svg></span>
       <span id="weatherText">加载中…</span>
     </span>
     <span class="mini-widget" id="luckyWidget" title="随机打开一个引导页">
-      <span class="w-ic"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M8 8h.01"/><path d="M16 8h.01"/><path d="M12 12h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/></svg></span>
+      <span class="w-ic"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14" /> <path d="M8 8.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0" fill="currentColor" /> <path d="M15 8.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0" fill="currentColor" /> <path d="M15 15.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0" fill="currentColor" /> <path d="M8 15.5a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0" fill="currentColor" /> <path d="M11.5 12a.5 .5 0 1 0 1 0a.5 .5 0 1 0 -1 0" fill="currentColor" /></svg></span>
       <span>手气不错</span>
     </span>
   </div>
@@ -626,14 +1151,14 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 
   <div class="search-box">
     <input type="text" id="searchInput" placeholder="搜索引导页，或输入后回车用搜索引擎直达…" autocomplete="off">
-    <span class="s-icon"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+    <span class="s-icon"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10a7 7 0 1 0 14 0a7 7 0 1 0 -14 0" /> <path d="M21 21l-6 -6" /></svg></span>
     <div class="suggest-box" id="suggestBox" style="display:none"></div>
   </div>
   <div class="search-hint">在搜索框输入关键词后按回车，可用当前选中的搜索引擎直接搜索</div>
   <div class="engines" id="engines"></div>
 
   <div class="announce" id="announce" style="display:none">
-    <span class="horn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></span><span id="announceText"></span>
+    <span class="horn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px" aria-hidden="true"><path d="M18 8a3 3 0 0 1 0 6" /> <path d="M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5" /> <path d="M12 8l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8" /></svg></span><span id="announceText"></span>
     <span class="more" id="announceMore" style="display:none">查看全部 ›</span>
   </div>
 
@@ -652,13 +1177,13 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   <div class="grid" id="grid"></div>
 
   <div class="empty" id="empty" style="display:none">
-    <div class="big"><svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></div>
+    <div class="big"><svg xmlns="http://www.w3.org/2000/svg" width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg></div>
     <div id="emptyText">暂无引导页，请等待管理员添加</div>
   </div>
 
   <div class="download-entry" id="downloadEntry" style="display:none">
     <a class="dl-entry-btn" href="/download">
-      <span class="dl-entry-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></span>
+      <span class="dl-entry-icon"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" /> <path d="M7 11l5 5l5 -5" /> <path d="M12 4l0 12" /></svg></span>
       <span class="dl-entry-main">
         <span class="dl-entry-title">文件下载</span>
         <span class="dl-entry-sub" id="dlEntrySub"></span>
@@ -672,7 +1197,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     <div class="friends-list" id="friendsList"></div>
   </div>
 
-  <footer id="footer">幻终の导航 · 轻量网址导航</footer>
+  <footer id="footer"><span id="footerText">幻终の导航 · 轻量网址导航</span><a class="footer-status" href="/status" title="查看服务运行状态">运行状态</a></footer>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -681,7 +1206,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 <div class="ann-modal-mask" id="annModalMask" style="display:none">
   <div class="ann-modal">
     <div class="ann-modal-head">
-      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg>站点公告</span>
+      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M18 8a3 3 0 0 1 0 6" /> <path d="M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5" /> <path d="M12 8l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8" /></svg>站点公告</span>
       <button class="ann-modal-close" id="annModalClose" title="关闭">✕</button>
     </div>
     <div class="ann-modal-body" id="annModalBody"></div>
@@ -692,7 +1217,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 <div class="ann-modal-mask" id="qqModalMask" style="display:none">
   <div class="ann-modal" style="max-width:420px">
     <div class="ann-modal-head">
-      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>加入 QQ 群</span>
+      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /> <path d="M16 3.13a4 4 0 0 1 0 7.75" /> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" /></svg>加入 QQ 群</span>
       <button class="ann-modal-close" id="qqModalClose" title="关闭">✕</button>
     </div>
     <div class="ann-modal-body" id="qqModalBody"></div>
@@ -703,7 +1228,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 <div class="ann-modal-mask" id="cmtModalMask" style="display:none">
   <div class="ann-modal" style="max-width:520px">
     <div class="ann-modal-head">
-      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>留言板</span>
+      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M8 9h8" /> <path d="M8 13h6" /> <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12" /></svg>留言板</span>
       <button class="ann-modal-close" id="cmtModalClose" title="关闭">✕</button>
     </div>
     <div class="ann-modal-body">
@@ -718,7 +1243,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
         <button class="icon-btn" id="cmtSubmit" style="width:auto;height:auto;padding:9px 20px;border-radius: 18px;background:var(--accent);color:#fff;font-size:14px;margin-top:4px;display:inline-flex;gap:6px;align-items:center;border:none;cursor:pointer;">发布留言</button>
       </div>
       <div style="font-weight:600;font-size:13px;margin:18px 0 10px;display:flex;align-items:center;gap:6px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 9h8" /> <path d="M8 13h6" /> <path d="M18 4a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-5l-5 3v-3h-2a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12" /></svg>
         全部留言（<span id="cmtCount">0</span>）
       </div>
       <div id="cmtList"></div>
@@ -731,7 +1256,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 <div class="ann-modal-mask" id="prefsModalMask" style="display:none">
   <div class="ann-modal" style="max-width:480px">
     <div class="ann-modal-head">
-      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="2" x2="6" y1="14" y2="14"/><line x1="10" x2="14" y1="8" y2="8"/><line x1="18" x2="22" y1="16" y2="16"/></svg>偏好设置</span>
+      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M12 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 6l8 0" /> <path d="M16 6l4 0" /> <path d="M6 12a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 12l2 0" /> <path d="M10 12l10 0" /> <path d="M15 18a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /> <path d="M4 18l11 0" /> <path d="M19 18l1 0" /></svg>偏好设置</span>
       <button class="ann-modal-close" id="prefsModalClose" title="关闭">✕</button>
     </div>
     <div class="ann-modal-body">
@@ -778,7 +1303,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 <div class="ann-modal-mask" id="fbModalMask" style="display:none">
   <div class="ann-modal" style="max-width:460px">
     <div class="ann-modal-head">
-      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>意见反馈</span>
+      <span><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px" aria-hidden="true"><path d="M8 9h8" /> <path d="M8 13h6" /> <path d="M9 18h-3a3 3 0 0 1 -3 -3v-8a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v8a3 3 0 0 1 -3 3h-3l-3 3l-3 -3" /></svg>意见反馈</span>
       <button class="ann-modal-close" id="fbModalClose" title="关闭">✕</button>
     </div>
     <div class="ann-modal-body">
@@ -801,8 +1326,10 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   var sites = [];
   var activeCategory = '';
   var currentEngine = localStorage.getItem('ht_engine') || 'bing';
-  // 兼容：老用户可能存着已删除的引擎，回退到必应
-  if (currentEngine === 'baidu') { currentEngine = 'bing'; localStorage.setItem('ht_engine', 'bing'); }
+  var commentMaxLen = 200;
+  var feedbackMaxLen = 300;
+  var firstGridRender = true;
+  var gridEnterTimer = null;
 
   /* ---------- 收藏与最近使用（localStorage 本地存储） ---------- */
   function loadJson(key, fallback) {
@@ -819,6 +1346,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   function toggleFav(id) {
     var i = favorites.indexOf(id);
     if (i >= 0) favorites.splice(i, 1); else favorites.push(id);
+    if (activeCategory === '__fav__' && !favorites.length) activeCategory = '';
     localStorage.setItem('ht_favs', JSON.stringify(favorites));
     renderCategories();
     render();
@@ -869,16 +1397,24 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     { id: 'bilibili',name: 'B站',    url: 'https://search.bilibili.com/all?keyword=' },
     { id: 'github',  name: 'GitHub', url: 'https://github.com/search?q=' }
   ];
+  // 兼容：老用户可能存着已删除或无效的引擎，回退到必应
+  if (!ENGINES.some(function (e) { return e.id === currentEngine; })) {
+    currentEngine = 'bing';
+    localStorage.setItem('ht_engine', 'bing');
+  }
 
-  var theme = localStorage.getItem('ht_theme') ||
+  var storedTheme = localStorage.getItem('ht_theme');
+  var theme = (storedTheme === 'dark' || storedTheme === 'light') ? storedTheme :
     (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 
-  var ICON_SUN = '<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>';
-  var ICON_MOON = '<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+  var ICON_SUN = '<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /> <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7" /></svg>';
+  var ICON_MOON = '<svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454l0 .008" /></svg>';
 
   function applyTheme() {
     document.documentElement.setAttribute('data-theme', theme);
     document.getElementById('themeBtn').innerHTML = theme === 'dark' ? ICON_SUN : ICON_MOON;
+    var meta = document.getElementById('themeColor');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#000000' : '#f5f5f7');
   }
   applyTheme();
   document.getElementById('themeBtn').addEventListener('click', function () {
@@ -893,6 +1429,29 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     t.classList.add('show');
     clearTimeout(t._timer);
     t._timer = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  /* ---------- 弹窗滚动锁：补偿滚动条宽度，避免打开/关闭时页面左右跳动 ---------- */
+  function hasOpenModal() {
+    var ids = ['annModalMask', 'qqModalMask', 'cmtModalMask', 'prefsModalMask', 'fbModalMask'];
+    for (var i = 0; i < ids.length; i++) {
+      var el = document.getElementById(ids[i]);
+      if (el && el.style.display !== 'none') return true;
+    }
+    return false;
+  }
+  function lockBodyScroll() {
+    var bodyClassList = document.body.classList;
+    if (bodyClassList.contains('modal-open')) return;
+    var gap = Math.max(0, window.innerWidth - document.documentElement.clientWidth);
+    if (gap > 0) document.documentElement.style.setProperty('--scrollbar-gap', gap + 'px');
+    bodyClassList.add('modal-open');
+  }
+  function unlockBodyScroll() {
+    if (hasOpenModal()) return;
+    var bodyClassList = document.body.classList;
+    bodyClassList.remove('modal-open');
+    document.documentElement.style.removeProperty('--scrollbar-gap');
   }
 
   /* ---------- 时钟与问候 ---------- */
@@ -921,10 +1480,20 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     var box = document.getElementById('engines');
     box.innerHTML = '';
     ENGINES.forEach(function (e) {
+      var active = e.id === currentEngine;
       var a = document.createElement('a');
-      a.className = 'engine';
-      a.textContent = e.name + (e.id === currentEngine ? ' ✓' : '');
+      a.className = 'engine' + (active ? ' active' : '');
       a.href = '#';
+      a.title = '使用' + e.name + '搜索';
+      a.setAttribute('aria-pressed', active ? 'true' : 'false');
+      var nameEl = document.createElement('span');
+      nameEl.textContent = e.name;
+      var checkEl = document.createElement('span');
+      checkEl.className = 'engine-check';
+      checkEl.textContent = '✓';
+      checkEl.setAttribute('aria-hidden', 'true');
+      a.appendChild(nameEl);
+      a.appendChild(checkEl);
       a.addEventListener('click', function (event) {
         event.preventDefault();
         currentEngine = e.id;
@@ -961,26 +1530,65 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     return src;
   }
 
-  // 将图标设为卡片背景；无图标时向服务端请求按需抓取结果
+  // 将图标设为卡片背景；无图标时向服务端请求按需抓取结果。
+  // 每个站点缓存抓取/加载状态，避免每次搜索、切换分类都重复请求图标。
   function applyCardIcon(cover, site) {
-    function setBackground(src) {
+    var card = cover.parentElement;
+    if (!site._iconCovers) site._iconCovers = [];
+    if (site._iconCovers.indexOf(cover) < 0) site._iconCovers.push(cover);
+
+    function cssUrl(src) {
+      return 'url("' + String(src).replace(/["\\]/g, '\\$&') + '")';
+    }
+    function markLoaded(src) {
+      site._iconOk = true;
+      site._iconFailed = false;
+      var covers = site._iconCovers || [];
+      site._iconCovers = [];
+      covers.forEach(function (c) {
+        c.style.backgroundImage = cssUrl(src);
+        if (c.parentElement) c.parentElement.classList.add('has-icon');
+      });
+    }
+    function requestIcon() {
+      if (site._iconChecked) return;
+      site._iconChecked = true;
+      site._iconFetchTried = true;
+      // 服务端会等待后台抓取结果，带超时；失败时保留首字母背景
+      fetch('/api/sites/' + encodeURIComponent(site.id) + '/icon')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d && d.icon) {
+            site.icon = d.icon;
+            site._iconFailed = false;
+            var next = iconUrl(site);
+            if (next) loadImage(next);
+          } else {
+            site._iconCovers = [];
+          }
+        })
+        .catch(function () { site._iconCovers = []; });
+    }
+    function loadImage(src) {
+      if (site._iconOk) { markLoaded(src); return; }
+      if (site._iconFailed) {
+        if (!site._iconFetchTried) requestIcon();
+        return;
+      }
       var img = new Image();
-      img.onload = function () { cover.style.backgroundImage = 'url("' + src + '")'; };
-      img.onerror = function () { /* 保留首字母背景 */ };
+      img.onload = function () { markLoaded(src); };
+      img.onerror = function () {
+        site._iconOk = false;
+        site._iconFailed = true;
+        if (!site._iconFetchTried) requestIcon();
+        else site._iconCovers = [];
+      };
       img.src = src;
     }
+
     var src = iconUrl(site);
-    if (src) { setBackground(src); return; }
-    // 无图标：请求服务端按需抓取（服务端会等待后台抓取结果，带超时）
-    fetch('/api/sites/' + encodeURIComponent(site.id) + '/icon')
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (d && d.icon) {
-          site.icon = d.icon; // 记住，本次会话内不再请求
-          setBackground(iconUrl(site));
-        }
-      })
-      .catch(function () { /* 抓取失败保留首字母背景 */ });
+    if (src) loadImage(src);
+    else requestIcon();
   }
 
   /* ---------- 分类 ---------- */
@@ -1045,6 +1653,8 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     var list = currentList();
     var grid = document.getElementById('grid');
     var empty = document.getElementById('empty');
+    if (gridEnterTimer) { clearTimeout(gridEnterTimer); gridEnterTimer = null; }
+    grid.classList.remove('is-entering');
     grid.innerHTML = '';
     if (!list.length) {
       empty.style.display = '';
@@ -1053,9 +1663,10 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
       return;
     }
     empty.style.display = 'none';
-    list.forEach(function (site) {
+    list.forEach(function (site, index) {
       var a = document.createElement('a');
       a.className = 'card';
+      if (firstGridRender) a.style.setProperty('--enter-delay', (Math.min(index, 12) * 28) + 'ms');
       a.href = safeUrl(site.url);
       a.target = '_blank';
       a.rel = 'noopener noreferrer';
@@ -1157,6 +1768,14 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
 
       grid.appendChild(a);
     });
+    if (firstGridRender) {
+      firstGridRender = false;
+      grid.classList.add('is-entering');
+      gridEnterTimer = setTimeout(function () {
+        grid.classList.remove('is-entering');
+        gridEnterTimer = null;
+      }, 900);
+    }
   }
 
   /* ---------- 卡片拖拽状态 ---------- */
@@ -1235,6 +1854,17 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     lucky: true, recent: true, download: true, shareCodes: true
   };
   function featureOn(k) { return FEATURES[k] !== false; }
+  // 顶栏小组件行：只有确实有可见组件时才占位，避免留下空白间距
+  function syncWidgetRow() {
+    var row = document.getElementById('widgetRow');
+    if (!row) return;
+    var visible = false;
+    ['weatherWidget', 'luckyWidget'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el && el.style.display !== 'none') visible = true;
+    });
+    row.style.display = visible ? '' : 'none';
+  }
 
   /* ---------- 加载站点名称、公告与引导页 ---------- */
   fetch('/api/auth/info').then(function (r) { return r.json(); }).then(function (d) {
@@ -1247,14 +1877,16 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     // 留言/反馈字数上限以后端配置为准，同步输入框 maxlength 与占位提示
     if (d.limits && typeof d.limits === 'object') {
       if (Number.isFinite(d.limits.commentMaxLen)) {
+        commentMaxLen = Math.max(1, Math.floor(d.limits.commentMaxLen));
         var cmtBox = document.getElementById('cmtContent');
-        cmtBox.maxLength = d.limits.commentMaxLen;
-        cmtBox.placeholder = '说点什么吧…（最多 ' + d.limits.commentMaxLen + ' 字）';
+        cmtBox.maxLength = commentMaxLen;
+        cmtBox.placeholder = '说点什么吧…（最多 ' + commentMaxLen + ' 字）';
       }
       if (Number.isFinite(d.limits.feedbackMaxLen)) {
+        feedbackMaxLen = Math.max(1, Math.floor(d.limits.feedbackMaxLen));
         var fbBox = document.getElementById('fbContent');
-        fbBox.maxLength = d.limits.feedbackMaxLen;
-        fbBox.placeholder = '说说你的建议或遇到的问题…（最多 ' + d.limits.feedbackMaxLen + ' 字）';
+        fbBox.maxLength = feedbackMaxLen;
+        fbBox.placeholder = '说说你的建议或遇到的问题…（最多 ' + feedbackMaxLen + ' 字）';
       }
     }
     applyFeatureVisibility();
@@ -1269,14 +1901,13 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     if (d.footerText) applyFooter(d.footerText);
     weatherEnabled = !!d.weatherEnabled;
     if (weatherEnabled) {
-      document.getElementById('widgetRow').style.display = '';
       loadWeather();
       setInterval(loadWeather, 10 * 60 * 1000); // 每 10 分钟刷新
     } else {
-      // 无天气时仍显示「手气不错」组件
-      document.getElementById('widgetRow').style.display = '';
+      // 无天气时只保留「手气不错」组件
       document.getElementById('weatherWidget').style.display = 'none';
     }
+    syncWidgetRow();
     if (d.quoteEnabled) loadQuote();
     // 倒计时 / 热门 / 友链：待功能开关加载后再请求，关闭的功能不发请求
     if (featureOn('countdown')) {
@@ -1307,6 +1938,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     if (!featureOn('qqGroups')) document.getElementById('qqBtn').style.display = 'none';
     if (!featureOn('download')) document.getElementById('downloadEntry').style.display = 'none';
     if (!featureOn('recent')) renderRecent(); // 关闭时隐藏已渲染的最近使用
+    syncWidgetRow();
   }
 
   fetch('/api/sites').then(function (r) { return r.json(); }).then(function (d) {
@@ -1314,6 +1946,8 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     renderCategories();
     render();
   }).catch(function () {
+    render();
+    document.getElementById('emptyText').textContent = '加载失败，请刷新重试';
     toast('加载失败，请刷新重试');
   });
 
@@ -1360,11 +1994,11 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   function openAnnModal() {
     renderAnnModal();
     document.getElementById('annModalMask').style.display = '';
-    document.body.classList.add('modal-open');
+    lockBodyScroll();
   }
   function closeAnnModal() {
     document.getElementById('annModalMask').style.display = 'none';
-    document.body.classList.remove('modal-open');
+    unlockBodyScroll();
   }
   document.getElementById('annModalClose').addEventListener('click', closeAnnModal);
   document.getElementById('annModalMask').addEventListener('click', function (e) {
@@ -1390,7 +2024,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
       a.rel = 'noopener noreferrer';
       var ic = document.createElement('span');
       ic.className = 'qq-ic';
-      ic.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+      ic.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /> <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /> <path d="M16 3.13a4 4 0 0 1 0 7.75" /> <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" /></svg>';
       var main = document.createElement('div');
       var nameEl = document.createElement('div');
       nameEl.className = 'qq-name';
@@ -1412,11 +2046,11 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   function openQqModal() {
     renderQqModal();
     document.getElementById('qqModalMask').style.display = '';
-    document.body.classList.add('modal-open');
+    lockBodyScroll();
   }
   function closeQqModal() {
     document.getElementById('qqModalMask').style.display = 'none';
-    document.body.classList.remove('modal-open');
+    unlockBodyScroll();
   }
   document.getElementById('qqModalClose').addEventListener('click', closeQqModal);
   document.getElementById('qqModalMask').addEventListener('click', function (e) {
@@ -1425,7 +2059,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   document.getElementById('qqBtn').addEventListener('click', function () {
     if (qqGroups.length === 1) {
       // 只有一个群时直接跳转
-      window.open(qqGroups[0].url, '_blank', 'noopener');
+      window.open(safeUrl(qqGroups[0].url), '_blank', 'noopener');
     } else {
       openQqModal();
     }
@@ -1528,7 +2162,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     var errEl = document.getElementById('cmtErr');
     errEl.textContent = '';
     if (!content) { errEl.textContent = '留言内容不能为空'; return; }
-    if (content.length > 200) { errEl.textContent = '留言内容不能超过 200 字'; return; }
+    if (content.length > commentMaxLen) { errEl.textContent = '留言内容不能超过 ' + commentMaxLen + ' 字'; return; }
     var body = { nick: document.getElementById('cmtNick').value.trim(), content: content };
     if (cmtCaptchaId) {
       body.captchaId = cmtCaptchaId;
@@ -1566,15 +2200,15 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   document.getElementById('cmtCapImg').addEventListener('click', cmtRefreshCaptcha);
   document.getElementById('commentBtn').addEventListener('click', function () {
     document.getElementById('cmtModalMask').style.display = '';
-    document.body.classList.add('modal-open');
+    lockBodyScroll();
     loadComments();
   });
   document.getElementById('cmtModalClose').addEventListener('click', function () {
     document.getElementById('cmtModalMask').style.display = 'none';
-    document.body.classList.remove('modal-open');
+    unlockBodyScroll();
   });
   document.getElementById('cmtModalMask').addEventListener('click', function (e) {
-    if (e.target === this) { this.style.display = 'none'; document.body.classList.remove('modal-open'); }
+    if (e.target === this) { this.style.display = 'none'; unlockBodyScroll(); }
   });
 
   /* ---------- 键盘快捷键 ---------- */
@@ -1593,7 +2227,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
       var masks = ['fbModalMask', 'prefsModalMask', 'cmtModalMask', 'qqModalMask', 'annModalMask'];
       for (var i = 0; i < masks.length; i++) {
         var m = document.getElementById(masks[i]);
-        if (m && m.style.display !== 'none') { m.style.display = 'none'; document.body.classList.remove('modal-open'); return; }
+        if (m && m.style.display !== 'none') { m.style.display = 'none'; unlockBodyScroll(); return; }
       }
       if (typing) document.activeElement.blur();
     }
@@ -1628,14 +2262,14 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   document.getElementById('prefsBtn').addEventListener('click', function () {
     renderPrefsUI();
     document.getElementById('prefsModalMask').style.display = '';
-    document.body.classList.add('modal-open');
+    lockBodyScroll();
   });
   document.getElementById('prefsModalClose').addEventListener('click', function () {
     document.getElementById('prefsModalMask').style.display = 'none';
-    document.body.classList.remove('modal-open');
+    unlockBodyScroll();
   });
   document.getElementById('prefsModalMask').addEventListener('click', function (e) {
-    if (e.target === this) { this.style.display = 'none'; document.body.classList.remove('modal-open'); }
+    if (e.target === this) { this.style.display = 'none'; unlockBodyScroll(); }
   });
 
   /* ---------- 个人偏好导入/导出（收藏、最近使用、主题、偏好、搜索历史） ---------- */
@@ -1707,7 +2341,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     document.body.classList.add('has-custom-bg');
   }
   function applyFooter(text) {
-    if (text) document.getElementById('footer').textContent = text;
+    if (text) document.getElementById('footerText').textContent = text;
   }
 
   /* ================= 独立访客上报（每日令牌去重） ================= */
@@ -1742,9 +2376,9 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   function fetchWeatherData() {
     fetch('/api/weather' + weatherLoc).then(function (r) { return r.json(); }).then(function (d) {
       if (!d || !d.enabled) return;
-      document.getElementById('widgetRow').style.display = '';
       var w = document.getElementById('weatherWidget');
       w.style.display = '';
+      syncWidgetRow();
       var el = document.getElementById('weatherText');
       if (d.error) { el.textContent = '天气暂不可用'; return; }
       el.innerHTML = '';
@@ -1944,13 +2578,17 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
         var tag = document.createElement('span'); tag.className = 'sg-tag'; tag.textContent = '站点';
         var nm = document.createElement('span'); nm.className = 'sg-name'; nm.textContent = row.site.name;
         item.appendChild(tag); item.appendChild(nm);
-        item.addEventListener('mousedown', function (e) {
-          e.preventDefault();
+        item._activate = function () {
           pushSearchHistory(row.site.name);
           recordRecent(row.site);
           window.open(safeUrl(row.site.url), '_blank', 'noopener');
           hideSuggest();
           searchInput.value = '';
+          render();
+        };
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          item._activate();
         });
       } else {
         var tag2 = document.createElement('span'); tag2.className = 'sg-tag'; tag2.textContent = '历史';
@@ -1963,11 +2601,14 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
           saveSearchHistory();
           renderSuggest();
         });
-        item.addEventListener('mousedown', function (e) {
-          e.preventDefault();
+        item._activate = function () {
           searchInput.value = row.text;
           hideSuggest();
           render();
+        };
+        item.addEventListener('mousedown', function (e) {
+          e.preventDefault();
+          item._activate();
         });
       }
       suggestItems.push(item);
@@ -1992,6 +2633,12 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
         suggestItems.forEach(function (el, i) { el.classList.toggle('hl', i === suggestHl); });
         return;
       }
+      if (e.key === 'Enter' && suggestHl >= 0 && suggestItems[suggestHl]) {
+        e.preventDefault();
+        var picked = suggestItems[suggestHl];
+        if (typeof picked._activate === 'function') picked._activate();
+        return;
+      }
     }
     if (e.key === 'Enter') {
       var kw = searchInput.value.trim();
@@ -2002,7 +2649,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
       // 恰好命中一个站点时直接打开它；否则用搜索引擎搜索
       if (hit.length === 1) {
         recordRecent(hit[0]);
-        window.open(hit[0].url, '_blank', 'noopener');
+        window.open(safeUrl(hit[0].url), '_blank', 'noopener');
         try {
           fetch('/api/visit', {
             method: 'POST',
@@ -2031,6 +2678,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
     var errEl = document.getElementById('fbErr');
     errEl.textContent = '';
     if (!content) { errEl.textContent = '反馈内容不能为空'; return; }
+    if (content.length > feedbackMaxLen) { errEl.textContent = '反馈内容不能超过 ' + feedbackMaxLen + ' 字'; return; }
     var body = { contact: document.getElementById('fbContact').value.trim(), content: content };
     if (fbCaptchaId) {
       body.captchaId = fbCaptchaId;
@@ -2051,7 +2699,7 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
         document.getElementById('fbCapRow').style.display = 'none';
         fbCaptchaId = '';
         document.getElementById('fbModalMask').style.display = 'none';
-        document.body.classList.remove('modal-open');
+        unlockBodyScroll();
         toast('反馈已提交，感谢你的建议');
         return;
       }
@@ -2066,14 +2714,14 @@ body { animation: fadeIn .5s var(--ease-apple) both; }
   }
   document.getElementById('feedbackBtn').addEventListener('click', function () {
     document.getElementById('fbModalMask').style.display = '';
-    document.body.classList.add('modal-open');
+    lockBodyScroll();
   });
   document.getElementById('fbModalClose').addEventListener('click', function () {
     document.getElementById('fbModalMask').style.display = 'none';
-    document.body.classList.remove('modal-open');
+    unlockBodyScroll();
   });
   document.getElementById('fbModalMask').addEventListener('click', function (e) {
-    if (e.target === this) { this.style.display = 'none'; document.body.classList.remove('modal-open'); }
+    if (e.target === this) { this.style.display = 'none'; unlockBodyScroll(); }
   });
   document.getElementById('fbSubmit').addEventListener('click', submitFeedback);
   document.getElementById('fbCapImg').addEventListener('click', fbRefreshCaptcha);

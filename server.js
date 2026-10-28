@@ -39,6 +39,7 @@ const BODY_LIMIT = 4 * 1024 * 1024;         // 请求体大小上限（含图标
 const TRANSFER_CHUNK_SIZE = 1024 * 1024;     // 文件/备份分块固定大小：1MB（服务端按序号定位写入）
 const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');   // 上传图标目录
 const FAVICON_DIR = path.join(DATA_DIR, 'favicons'); // 自动抓取的网站图标缓存目录
+const STATUS_CONFIG_FILE = path.join(DATA_DIR, 'status-config.json'); // 状态页数据源配置（含 API Key，权限 0600）
 const FILES_DIR = path.join(DATA_DIR, 'files');      // 共享文件目录
 const UPLOAD_MAX = 1024 * 1024;             // 单个图标文件上限：1MB
 const FILE_MAX = 200 * 1024 * 1024;         // 单个共享文件上限：200MB
@@ -85,7 +86,16 @@ const STATUS_MONITOR_MAX = 30;               // 自定义网站监控最多条�
 const STATUS_MONITOR_NAME_MAX = 50;
 const STATUS_MONITOR_CHECK_INTERVAL = 5 * 60 * 1000;
 const STATUS_MONITOR_TIMEOUT = 8000;
+const STATUS_MONITOR_RETRY_DELAY = 1000;      // 首次检测失败后，独立重试前的等待时间
 const STATUS_MONITOR_MAX_BYTES = 32 * 1024;
+const STATUS_HISTORY_DAYS_DEFAULT = 60;       // 状态页默认展示天数
+const STATUS_HISTORY_DAYS_MIN = 7;
+const STATUS_HISTORY_DAYS_MAX = 90;
+const STATUS_CACHE_TTL = 45 * 1000;           // UptimeRobot 数据缓存：45 秒，避免触发免费版 10 次/分钟限制
+const STATUS_CACHE_STALE_TTL = 30 * 60 * 1000; // API 失败时允许回退到 30 分钟内的缓存
+const STATUS_UR_TIMEOUT = 15000;              // UptimeRobot API 请求超时
+const STATUS_UR_MAX_BYTES = 2 * 1024 * 1024;
+const UPTIMEROBOT_API_URL = String(process.env.UPTIMEROBOT_API_URL || 'https://api.uptimerobot.com/v2/').replace(/\/?$/, '/');
 const QUOTES_KEEP = 100;                    // 每日一言自定义语录最多保留条数
 const FEEDBACK_MAX_LEN = 300;               // 反馈内容最大长度
 const FEEDBACK_CONTACT_MAX = 40;            // 反馈联系方式最大长度
@@ -1292,6 +1302,57 @@ function ensureDataDir() {
 
 // 载入（不存在则用默认值）
 ensureDataDir();
+
+// ---------------- 状态页数据源配置（UptimeRobot） ----------------
+const DEFAULT_STATUS_CONFIG = {
+  apiKey: '',
+  days: STATUS_HISTORY_DAYS_DEFAULT,
+  updatedAt: null
+};
+function validStatusApiKey(value) {
+  // UptimeRobot 的 read-only / monitor-specific key 均为字母、数字、下划线与连字符。
+  return /^[A-Za-z0-9_-]{8,128}$/.test(String(value == null ? '' : value).trim());
+}
+function normalizeStatusConfig(raw) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const apiKey = String(source.apiKey || '').trim();
+  const days = Number(source.days);
+  return {
+    apiKey: validStatusApiKey(apiKey) ? apiKey : '',
+    days: Number.isFinite(days)
+      ? Math.min(STATUS_HISTORY_DAYS_MAX, Math.max(STATUS_HISTORY_DAYS_MIN, Math.round(days)))
+      : STATUS_HISTORY_DAYS_DEFAULT,
+    updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt.slice(0, 40) : null
+  };
+}
+function loadStatusConfig() {
+  try {
+    return normalizeStatusConfig(JSON.parse(fs.readFileSync(STATUS_CONFIG_FILE, 'utf8')));
+  } catch (e) {
+    return { ...DEFAULT_STATUS_CONFIG };
+  }
+}
+function persistStatusConfig(config) {
+  const tmp = STATUS_CONFIG_FILE + '.tmp-' + process.pid + '-' + crypto.randomBytes(6).toString('hex');
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(config, null, 2), { encoding: 'utf8', mode: 0o600 });
+    fs.renameSync(tmp, STATUS_CONFIG_FILE);
+    try { fs.chmodSync(STATUS_CONFIG_FILE, 0o600); } catch (e) { /* Windows 上可能不支持，忽略 */ }
+  } catch (e) {
+    try { if (fs.existsSync(tmp)) fs.unlinkSync(tmp); } catch (cleanupError) { /* ignore */ }
+    throw e;
+  }
+}
+let statusConfig = loadStatusConfig();
+/** 环境变量优先级最高：方便容器/CI 部署，无需把密钥写入数据目录。 */
+function statusUptimeRobotKey() {
+  const envKey = String(process.env.UPTIMEROBOT_API_KEY || '').trim();
+  return envKey || statusConfig.apiKey;
+}
+function statusUptimeRobotKeySource() {
+  if (String(process.env.UPTIMEROBOT_API_KEY || '').trim()) return 'env';
+  return statusConfig.apiKey ? 'file' : '';
+}
 // 节点回源令牌需在主站重启后仍可用，但不应明文落盘；使用本地权限保护的 AES-GCM 密钥加密保存。
 let NODE_TOKEN_KEY;
 try {
@@ -1335,6 +1396,15 @@ const objectArray = value => Array.isArray(value)
   ? value.filter(item => item && typeof item === 'object' && !Array.isArray(item))
   : [];
 const plainRecord = value => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+// 旧版访问统计可能把计数写成字符串、null 或缺失字段；统一转为非负整数，避免累加时出现字符串拼接或 NaN。
+const countRecord = value => {
+  const out = {};
+  for (const [key, count] of Object.entries(plainRecord(value))) {
+    const n = Number(count);
+    if (Number.isFinite(n) && n > 0) out[key] = Math.floor(n);
+  }
+  return out;
+};
 db.users = objectArray(db.users);
 db.sites = objectArray(db.sites);
 db.files = objectArray(db.files);
@@ -1364,18 +1434,22 @@ db.logs.login = objectArray(db.logs.login);
 db.logs.operation = objectArray(db.logs.operation);
 db.visits = plainRecord(db.visits);
 db.visits.sites = plainRecord(db.visits.sites);
-db.visits.hourly = plainRecord(db.visits.hourly);
-db.visits.visitors = plainRecord(db.visits.visitors);
-db.visits.referrers = plainRecord(db.visits.referrers);
+for (const siteId of Object.keys(db.visits.sites)) {
+  const v = plainRecord(db.visits.sites[siteId]);
+  const total = Number(v.total);
+  v.total = Number.isFinite(total) && total > 0 ? Math.floor(total) : 0;
+  v.daily = countRecord(v.daily);
+  db.visits.sites[siteId] = v;
+}
+db.visits.hourly = countRecord(db.visits.hourly);
+db.visits.visitors = countRecord(db.visits.visitors);
+db.visits.referrers = countRecord(db.visits.referrers);
 if (typeof db.settings.allowRegister !== 'boolean') db.settings.allowRegister = true;
 if (typeof db.settings.announcement !== 'string') db.settings.announcement = '';
 if (typeof db.settings.logo !== 'string') db.settings.logo = '';
 if (typeof db.settings.linkCheckEnabled !== 'boolean') db.settings.linkCheckEnabled = false;
 if (!Number.isFinite(db.settings.linkCheckInterval)) db.settings.linkCheckInterval = LINK_CHECK_DEFAULT_INTERVAL;
-if (!db.visits.hourly || typeof db.visits.hourly !== 'object') db.visits.hourly = {};
 // 访客统计：visitors 按天记录独立访客数 { 'YYYY-MM-DD': n }，referrers 按来源域名累计 { host: n }
-if (!db.visits.visitors || typeof db.visits.visitors !== 'object') db.visits.visitors = {};
-if (!db.visits.referrers || typeof db.visits.referrers !== 'object') db.visits.referrers = {};
 // 设置项默认值：背景图 / 页脚 / 天气城市 / 天气开关 / 一言开关
 if (typeof db.settings.background !== 'string') db.settings.background = '';
 if (typeof db.settings.footerText !== 'string') db.settings.footerText = '';
@@ -2040,17 +2114,51 @@ function route(method, pattern, handler, opts = {}) {
 }
 
 const byOrder = (a, b) => ((a.order || 0) - (b.order || 0)) || (a.createdAt || '').localeCompare(b.createdAt || '');
+const monitorOrder = (a, b) => ((Number(a.order) || 0) - (Number(b.order) || 0)) || String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+// 旧数据没有 order 字段：启动时按既有顺序补齐 0,10,20…，后续拖拽排序直接复用该字段。
+db.monitors.sort(monitorOrder).forEach((m, i) => { m.order = i * 10; });
 
 // ============ 公开接口 ============
 
 // ---------------- 运行状态页 / 自定义网站监控 ----------------
-function monitorPublic(m) {
-  return {
+function monitorPublic(m, withHistory) {
+  const out = {
     id: m.id, name: m.name, url: m.url, description: m.description || '',
     enabled: m.enabled !== false, status: m.status || 'pending',
     statusCode: m.statusCode || 0, latency: Number.isFinite(m.latency) ? m.latency : null,
-    lastChecked: m.lastChecked || '', error: m.status === 'operational' ? '' : (m.error || '')
+    lastChecked: m.lastChecked || '', error: m.status === 'operational' ? '' : (m.error || ''),
+    order: Number.isFinite(Number(m.order)) ? Number(m.order) : 0,
+    retryOnFail: m.retryOnFail === true,
+    retried: m.retried === true,
+    recoveredByRetry: m.recoveredByRetry === true
   };
+  if (withHistory) out.history = Array.isArray(m.history) ? m.history : [];
+  return out;
+}
+/** 本地监控按上海时区记录每天的成功/失败次数，供状态页在没有 UptimeRobot 时展示真实历史 */
+function recordMonitorHistory(m) {
+  if (!m) return;
+  const date = logDateInShanghai(Date.now());
+  if (!Array.isArray(m.history)) m.history = [];
+  let day = m.history.find(h => h && h.date === date);
+  if (!day) {
+    day = { date, checks: 0, up: 0, down: 0, totalLatency: 0, latencySamples: 0 };
+    m.history.push(day);
+  }
+  day.checks = (Number(day.checks) || 0) + 1;
+  if (m.status === 'operational') {
+    day.up = (Number(day.up) || 0) + 1;
+    if (Number.isFinite(m.latency)) {
+      day.totalLatency = (Number(day.totalLatency) || 0) + m.latency;
+      day.latencySamples = (Number(day.latencySamples) || 0) + 1;
+    }
+  } else if (m.status === 'outage') {
+    day.down = (Number(day.down) || 0) + 1;
+  }
+  m.history = m.history
+    .filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date || '')))
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .slice(-STATUS_HISTORY_DAYS_MAX);
 }
 function monitorUrlValid(value) {
   try {
@@ -2058,8 +2166,7 @@ function monitorUrlValid(value) {
     return (u.protocol === 'http:' || u.protocol === 'https:') && u.username === '' && u.password === '' && u.pathname.length <= 2048;
   } catch (e) { return false; }
 }
-async function checkMonitor(m) {
-  if (!m || m.enabled === false) { if (m) m.status = 'disabled'; return m; }
+async function probeMonitor(m) {
   const started = Date.now();
   try {
     const result = await fetchRemote(m.url, {
@@ -2079,6 +2186,23 @@ async function checkMonitor(m) {
     m.status = 'outage'; m.statusCode = 0; m.latency = Math.max(0, Date.now() - started);
     m.lastChecked = nowISO(); m.error = String(e && e.message || '连接失败').slice(0, 160);
   }
+  return m.status === 'operational';
+}
+
+async function checkMonitor(m) {
+  if (!m) return m;
+  m.retried = false;
+  m.recoveredByRetry = false;
+  if (m.enabled === false) { m.status = 'disabled'; return m; }
+  // 每个监控点独立配置：首次探测失败后，单独再请求一次；历史只记录最终结果，避免重复计数。
+  const ok = await probeMonitor(m);
+  if (!ok && m.retryOnFail === true) {
+    m.retried = true;
+    await new Promise(resolve => setTimeout(resolve, STATUS_MONITOR_RETRY_DELAY));
+    const recovered = await probeMonitor(m);
+    m.recoveredByRetry = recovered;
+  }
+  recordMonitorHistory(m);
   return m;
 }
 let monitorCheckRunning = false;
@@ -2092,29 +2216,318 @@ async function checkAllMonitors() {
 }
 
 // 状态页公开数据：单体应用模块 + 用户自定义网站监控
-route('GET', '/api/status', async ctx => {
-  const now = Date.now();
-  const startedAt = toShanghaiISO(now - Math.floor(process.uptime() * 1000));
-  const components = [
-    { id: 'navigation', name: '导航首页', description: '站点导航与搜索服务', status: 'operational', uptime: '99.99%' },
-    { id: 'admin', name: '管理后台', description: '站点配置与内容管理', status: 'operational', uptime: '99.99%' },
-    { id: 'files', name: '文件共享', description: '文件上传、下载与取件码', status: featureOn('downloadEnabled') ? 'operational' : 'degraded', uptime: featureOn('downloadEnabled') ? '99.98%' : '—' },
-    { id: 'weather', name: '天气服务', description: '实时天气代理服务', status: db.settings.weatherEnabled ? 'operational' : 'degraded', uptime: db.settings.weatherEnabled ? '99.95%' : '—' },
-    { id: 'security', name: '安全防护', description: '访问控制、验证码与会话保护', status: 'operational', uptime: '100%' }
-  ];
-  const monitors = db.monitors.filter(m => m && m.enabled !== false).map(monitorPublic);
-  const all = components.concat(monitors.map(m => ({ ...m, uptime: m.status === 'operational' ? '监控正常' : '异常' })));
-  const degraded = all.filter(x => x.status !== 'operational').length;
-  json(ctx.res, 200, {
-    name: db.settings.siteName || '幻终の导航', status: degraded ? 'degraded' : 'operational',
-    statusLabel: degraded ? '部分服务受限' : '所有系统正常运行', checkedAt: toShanghaiISO(now),
-    startedAt, uptimeSeconds: Math.floor(process.uptime()), components, monitors, incidents: []
+// ---------------- UptimeRobot 数据接入 ----------------
+const STATUS_UR_STATUS_LABELS = { up: '正常', down: '故障', degraded: '性能下降', paused: '已暂停', unknown: '待检测' };
+const STATUS_UR_TYPE_LABELS = { 1: 'HTTP', 2: '关键词', 3: 'Ping', 4: '端口', 5: '心跳' };
+const STATUS_OVERALL_LABELS = {
+  operational: '所有系统运行正常', degraded: '部分服务出现异常',
+  outage: '检测到服务故障', unknown: '暂无可用监控数据'
+};
+function clampPercent(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.max(0, Math.min(100, Math.round(n * 100) / 100));
+}
+function uptimeRobotStatus(raw) {
+  const code = Number(raw);
+  if (code === 2) return 'up';
+  if (code === 8) return 'degraded';
+  if (code === 9) return 'down';
+  if (code === 0) return 'paused';
+  return 'unknown';
+}
+/** 上海时区某天 00:00 的 Unix 秒；offset=0 今天，1 昨天，-1 明天 */
+function shanghaiDayStart(offsetDays) {
+  const sh = Date.now() + SHANGHAI_OFFSET_MS;
+  const dayStartSh = Math.floor(sh / 86400000) * 86400000;
+  return Math.floor((dayStartSh - offsetDays * 86400000 - SHANGHAI_OFFSET_MS) / 1000);
+}
+/** 与页面展示顺序一致：从最早到最新 */
+function statusDateKeys(days) {
+  const keys = [];
+  for (let i = days - 1; i >= 0; i--) keys.push(logDateInShanghai(Date.now() - i * 86400000));
+  return keys;
+}
+/** UptimeRobot 要求日期范围从新到旧，最后追加整段总范围 */
+function statusUptimeRanges(days) {
+  const ranges = [];
+  // 今天、昨天……最早一天，每天范围均为 [当天 00:00, 次日 00:00)
+  for (let i = 0; i < days; i++) ranges.push(`${shanghaiDayStart(i)}_${shanghaiDayStart(i - 1)}`);
+  ranges.push(`${shanghaiDayStart(days - 1)}_${shanghaiDayStart(-1)}`);
+  return ranges.join('-');
+}
+function uptimeRobotPost(pathname, params, keyOverride) {
+  return new Promise((resolve, reject) => {
+    const key = String(keyOverride === undefined ? statusUptimeRobotKey() : (keyOverride || '')).trim();
+    if (!key) return reject(Object.assign(new Error('尚未配置 UptimeRobot API Key'), { code: 'STATUS_NO_KEY' }));
+    let base;
+    try { base = new URL(UPTIMEROBOT_API_URL); } catch (e) { return reject(new Error('UptimeRobot API 地址无效')); }
+    if (base.protocol !== 'http:' && base.protocol !== 'https:') return reject(new Error('UptimeRobot API 地址必须是 http/https'));
+    const lib = base.protocol === 'https:' ? https : http;
+    const form = new URLSearchParams();
+    form.set('api_key', key);
+    form.set('format', 'json');
+    for (const [k, v] of Object.entries(params || {})) {
+      if (v !== undefined && v !== null && v !== '') form.set(k, String(v));
+    }
+    const body = form.toString();
+    const req = lib.request({
+      protocol: base.protocol,
+      hostname: base.hostname,
+      port: base.port || undefined,
+      path: base.pathname.replace(/\/+$/, '/') + String(pathname || '').replace(/^\/+/, ''),
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(body),
+        'Accept': 'application/json',
+        'User-Agent': 'HuanZhong-Nav-Status/1.0',
+        'Cache-Control': 'no-cache'
+      },
+      timeout: STATUS_UR_TIMEOUT
+    }, res => {
+      const chunks = [];
+      let size = 0;
+      res.on('data', chunk => {
+        size += chunk.length;
+        if (size > STATUS_UR_MAX_BYTES) { res.destroy(new Error('UptimeRobot 响应过大')); return; }
+        chunks.push(chunk);
+      });
+      res.on('end', () => {
+        if (res.statusCode !== 200) return reject(new Error('UptimeRobot 返回 HTTP ' + res.statusCode));
+        let data;
+        try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+        catch (e) { return reject(new Error('UptimeRobot 响应不是有效 JSON')); }
+        if (!data || String(data.stat) !== 'ok') {
+          const detail = data && data.error ? String(data.error.message || data.error.type || '') : '';
+          return reject(new Error('UptimeRobot：' + (detail || '接口返回异常')));
+        }
+        resolve(data);
+      });
+      res.on('error', reject);
+    });
+    req.on('timeout', () => req.destroy(new Error('UptimeRobot 请求超时')));
+    req.on('error', reject);
+    req.end(body);
   });
+}
+function normalizeUptimeRobotMonitor(raw, days, dateKeys) {
+  const status = uptimeRobotStatus(raw.status);
+  const paused = status === 'paused';
+  const values = String(raw.custom_uptime_ranges || '').split('-');
+  const total = clampPercent(values.length > days ? values[days] : '');
+  // 接口按请求顺序返回（最新一天在前），页面按时间正序展示。
+  // 暂停中的监控不展示任何可用率，避免把暂停前的历史误读为当前状态。
+  const history = [];
+  for (let i = days - 1; i >= 0; i--) {
+    history.push({ date: dateKeys[days - 1 - i], uptime: paused ? null : clampPercent(values[i]), down: null });
+  }
+  const times = Array.isArray(raw.response_times) ? raw.response_times : [];
+  const latest = times.find(x => x && Number.isFinite(Number(x.value))) || null;
+  const lastChecked = latest && Number(latest.datetime) ? toShanghaiISO(Number(latest.datetime) * 1000) : '';
+  return {
+    id: 'ur-' + String(raw.id || ''),
+    name: String(raw.friendly_name || raw.url || '未命名监控').slice(0, 100),
+    url: String(raw.url || '').slice(0, 2048),
+    description: '',
+    type: 'uptimerobot',
+    typeLabel: STATUS_UR_TYPE_LABELS[Number(raw.type)] || '监控',
+    status,
+    statusLabel: STATUS_UR_STATUS_LABELS[status] || '未知',
+    uptime: paused ? null : total,
+    interval: Number(raw.interval) > 0 ? Number(raw.interval) : null,
+    latency: latest ? Math.max(0, Math.round(Number(latest.value))) : null,
+    lastChecked,
+    createdAt: Number(raw.create_datetime) ? toShanghaiISO(Number(raw.create_datetime) * 1000) : '',
+    days: history
+  };
+}
+function normalizeUptimeRobotIncidents(monitors) {
+  const list = [];
+  for (const m of monitors) {
+    const logs = Array.isArray(m.logs) ? m.logs : [];
+    for (const log of logs) {
+      if (!log || Number(log.type) !== 1) continue; // 只取宕机事件
+      const at = Number(log.datetime);
+      if (!Number.isFinite(at) || at <= 0) continue;
+      const duration = Math.max(0, Math.round(Number(log.duration) || 0));
+      const reason = log.reason && typeof log.reason === 'object'
+        ? String(log.reason.detail || log.reason.code || '')
+        : String(log.reason || '');
+      list.push({
+        id: `${m.id}-${at}`,
+        monitorId: 'ur-' + String(m.id || ''),
+        monitorName: String(m.friendly_name || ''),
+        type: 'down',
+        startedAt: toShanghaiISO(at * 1000),
+        duration,
+        ongoing: duration <= 0,
+        reason: reason.slice(0, 200)
+      });
+    }
+  }
+  list.sort((a, b) => String(b.startedAt).localeCompare(String(a.startedAt)));
+  return list.slice(0, 30);
+}
+function statusSummary(components) {
+  const s = { total: components.length, up: 0, down: 0, degraded: 0, paused: 0, unknown: 0, uptime: null };
+  let sum = 0, n = 0;
+  for (const c of components) {
+    if (c.status === 'up') s.up++;
+    else if (c.status === 'down') s.down++;
+    else if (c.status === 'degraded') s.degraded++;
+    else if (c.status === 'paused') s.paused++;
+    else s.unknown++;
+    if (Number.isFinite(c.uptime) && c.status !== 'paused') { sum += c.uptime; n++; }
+  }
+  s.uptime = n ? Math.round((sum / n) * 100) / 100 : null;
+  return s;
+}
+function overallStatus(summary) {
+  if (summary.down > 0) return 'outage';
+  if (summary.degraded > 0) return 'degraded';
+  if (!summary.total || (summary.up === 0 && (summary.unknown > 0 || summary.paused > 0))) return 'unknown';
+  return 'operational';
+}
+function buildUptimeRobotPayload(monitors, days, fetchedAt) {
+  const dateKeys = statusDateKeys(days);
+  const components = monitors.map(m => normalizeUptimeRobotMonitor(m, days, dateKeys));
+  // 状态页面向访客，只展示在线状态，不暴露监控目标地址，也不提供跳转入口。
+  components.forEach(c => { c.url = ''; });
+  const summary = statusSummary(components);
+  const status = overallStatus(summary);
+  return {
+    source: 'uptimerobot', configured: true,
+    name: db.settings.siteName || '幻终の导航',
+    days, checkedAt: toShanghaiISO(), fetchedAt: toShanghaiISO(fetchedAt),
+    status, statusLabel: STATUS_OVERALL_LABELS[status],
+    summary, components, incidents: normalizeUptimeRobotIncidents(monitors),
+    error: '', warning: ''
+  };
+}
+let statusCache = { signature: '', payload: null, fetchedAt: 0 };
+let statusInflight = null;
+let statusLastForceAt = 0;
+function statusCacheSignature() {
+  return crypto.createHash('sha256')
+    .update(statusUptimeRobotKey() + '|' + statusConfig.days)
+    .digest('hex').slice(0, 24);
+}
+async function getUptimeRobotStatus(force) {
+  if (!statusUptimeRobotKey()) return null;
+  const signature = statusCacheSignature();
+  const now = Date.now();
+  if (!force && statusCache.payload && statusCache.signature === signature &&
+      now - statusCache.fetchedAt < STATUS_CACHE_TTL) {
+    return {
+      ...statusCache.payload, source: 'cache',
+      cacheAge: Math.round((now - statusCache.fetchedAt) / 1000)
+    };
+  }
+  if (statusInflight && statusInflight.signature === signature) return statusInflight.promise;
+  const days = statusConfig.days;
+  const promise = (async () => {
+    const data = await uptimeRobotPost('getMonitors', {
+      monitors: '',
+      custom_uptime_ranges: statusUptimeRanges(days),
+      logs: '1',
+      logs_limit: '100',
+      response_times: '1',
+      response_times_limit: '1',
+      show_url: '1',
+      timezone: '1'
+    });
+    const payload = buildUptimeRobotPayload(Array.isArray(data.monitors) ? data.monitors : [], days, Date.now());
+    statusCache = { signature, payload, fetchedAt: Date.now() };
+    return payload;
+  })();
+  statusInflight = { signature, promise };
+  try {
+    return await promise;
+  } catch (e) {
+    const staleAge = Date.now() - statusCache.fetchedAt;
+    if (statusCache.payload && statusCache.signature === signature && staleAge < STATUS_CACHE_STALE_TTL) {
+      return {
+        ...statusCache.payload, source: 'cache',
+        warning: String(e && e.message || e).slice(0, 200),
+        cacheAge: Math.round(staleAge / 1000)
+      };
+    }
+    throw e;
+  } finally {
+    if (statusInflight && statusInflight.promise === promise) statusInflight = null;
+  }
+}
+function localMonitorHistoryDays(m, days) {
+  const keys = statusDateKeys(days);
+  const source = new Map((Array.isArray(m.history) ? m.history : []).map(h => [String(h.date || ''), h]));
+  return keys.map(date => {
+    const h = source.get(date);
+    const checks = h ? Number(h.checks) || 0 : 0;
+    return {
+      date,
+      uptime: checks ? Math.round(((Number(h.up) || 0) / checks) * 10000) / 100 : null,
+      down: checks ? Number(h.down) || 0 : null
+    };
+  });
+}
+function localMonitorComponent(m, days) {
+  const mapping = { operational: 'up', outage: 'down', pending: 'unknown', disabled: 'paused' };
+  const status = mapping[m.status] || 'unknown';
+  const history = localMonitorHistoryDays(m, days);
+  const valid = history.filter(h => Number.isFinite(h.uptime));
+  const uptime = valid.length
+    ? Math.round((valid.reduce((sum, h) => sum + h.uptime, 0) / valid.length) * 100) / 100
+    : null;
+  return {
+    id: m.id, name: m.name, url: m.url, description: m.description || '',
+    type: 'local', typeLabel: '本地检测',
+    status, statusLabel: STATUS_UR_STATUS_LABELS[status] || '未知',
+    uptime, interval: STATUS_MONITOR_CHECK_INTERVAL / 1000,
+    latency: Number.isFinite(m.latency) ? m.latency : null,
+    lastChecked: m.lastChecked || '', createdAt: m.createdAt || '',
+    days: history,
+    // 公开状态页只展示在线状态；原始探测错误可能包含内部主机名或 IP，不对外返回。
+    error: ''
+  };
+}
+function localStatusPayload(days, warning) {
+  const components = [...db.monitors].filter(m => m && m.enabled !== false).sort(monitorOrder).map(m => localMonitorComponent(m, days));
+  // 与 UptimeRobot 数据源一致：公开接口不返回监控地址。
+  components.forEach(c => { c.url = ''; });
+  const summary = statusSummary(components);
+  const status = overallStatus(summary);
+  return {
+    source: 'local', configured: !!statusUptimeRobotKey(),
+    name: db.settings.siteName || '幻终の导航',
+    days, checkedAt: toShanghaiISO(), fetchedAt: toShanghaiISO(),
+    status, statusLabel: summary.total ? STATUS_OVERALL_LABELS[status] : '暂未配置监控项',
+    summary, components, incidents: [],
+    error: '', warning: String(warning || '').slice(0, 300)
+  };
+}
+
+// 状态页公开数据：优先真实 UptimeRobot 监控，未配置时回退到本地监测
+route('GET', '/api/status', async ctx => {
+  const days = statusConfig.days;
+  const wantsForce = ctx.query && ctx.query.get('refresh') === '1';
+  const force = wantsForce && Date.now() - statusLastForceAt >= 15000;
+  if (force) statusLastForceAt = Date.now();
+  try {
+    const payload = await getUptimeRobotStatus(force);
+    if (payload) return json(ctx.res, 200, payload);
+  } catch (e) {
+    // 公开状态页无需暴露具体数据源细节，仅提示已回退到本地监测。
+    try { console.warn('[status] 外部监控数据获取失败:', e && e.message ? e.message : e); } catch (_) {}
+    return json(ctx.res, 200, localStatusPayload(days, '实时监控数据暂时不可用，已回退到本站本地探测数据。'));
+  }
+  json(ctx.res, 200, localStatusPayload(days, ''));
 });
 
 // 状态页监控管理：仅管理员及以上可修改
 route('GET', '/api/admin/status/monitors', async ctx => {
-  json(ctx.res, 200, { monitors: db.monitors.map(monitorPublic) });
+  json(ctx.res, 200, { monitors: [...db.monitors].sort(monitorOrder).map(m => monitorPublic(m)) });
 }, { auth: true });
 route('POST', '/api/admin/status/monitors', async ctx => {
   if (db.monitors.length >= STATUS_MONITOR_MAX) return json(ctx.res, 400, { error: `最多添加 ${STATUS_MONITOR_MAX} 个监控网站` });
@@ -2124,21 +2537,52 @@ route('POST', '/api/admin/status/monitors', async ctx => {
   if (!monitorUrlValid(url)) return json(ctx.res, 400, { error: '监控地址必须是有效的 http/https 网站地址' });
   if (db.monitors.some(m => m.url === url)) return json(ctx.res, 409, { error: '该监控地址已存在' });
   try { await assertSafeHost(new URL(url).hostname); } catch (e) { return json(ctx.res, 400, { error: '监控地址不允许指向内网、回环或云元数据地址' }); }
-  const m = { id: uid(), name, url, description, enabled: b.enabled !== false, status: 'pending', statusCode: 0, latency: null, lastChecked: '', error: '', createdAt: nowISO(), createdBy: ctx.user.username };
+  const maxOrder = db.monitors.reduce((max, item) => Math.max(max, Number(item.order) || 0), 0);
+  const m = {
+    id: uid(), name, url, description, enabled: b.enabled !== false,
+    retryOnFail: b.retryOnFail === true, order: maxOrder + 10,
+    status: 'pending', statusCode: 0, latency: null, lastChecked: '', error: '',
+    retried: false, recoveredByRetry: false, createdAt: nowISO(), createdBy: ctx.user.username
+  };
   db.monitors.push(m); await checkMonitor(m); saveDB('monitors', db.monitors); logOp(ctx.user, ctx.req, '添加网站监控', `${name}（${url}）`);
   json(ctx.res, 200, { ok: true, monitor: monitorPublic(m) });
 }, { auth: true });
+// 保存拖拽排序结果：按提交顺序重新赋 order（0,10,20…）
+// 必须注册在 /api/admin/status/monitors/:id 之前，否则会被通配路由拦截。
+route('PUT', '/api/admin/status/monitors/reorder', async ctx => {
+  const ids = (ctx.body || {}).ids;
+  if (!Array.isArray(ids) || !ids.length) return json(ctx.res, 400, { error: '排序数据为空' });
+  if (ids.length > STATUS_MONITOR_MAX) return json(ctx.res, 400, { error: '排序条目过多' });
+  const unique = [...new Set(ids.filter(id => typeof id === 'string'))];
+  if (unique.length !== ids.length) return json(ctx.res, 400, { error: '排序数据存在重复项' });
+  const inList = db.monitors.filter(m => unique.includes(m.id));
+  if (inList.length !== unique.length) return json(ctx.res, 400, { error: '部分监控不存在，请刷新后重试' });
+  inList.sort((a, b) => unique.indexOf(a.id) - unique.indexOf(b.id));
+  inList.forEach((m, i) => { m.order = i * 10; });
+  db.monitors.sort(monitorOrder);
+  saveDB('monitors', db.monitors);
+  logOp(ctx.user, ctx.req, '调整网站监控排序', `${inList.length} 个监控`);
+  json(ctx.res, 200, { ok: true });
+}, { auth: true });
+
 route('PUT', '/api/admin/status/monitors/:id', async ctx => {
   const m = db.monitors.find(x => x.id === ctx.params.id); if (!m) return json(ctx.res, 404, { error: '监控不存在' });
   const b = ctx.body || {};
+  let shouldCheck = false;
   if (b.name !== undefined) { const n = String(b.name).trim(); if (!n || n.length > STATUS_MONITOR_NAME_MAX) return json(ctx.res, 400, { error: `监控名称需为 1-${STATUS_MONITOR_NAME_MAX} 个字符` }); m.name = n; }
   if (b.description !== undefined) m.description = String(b.description).trim().slice(0, 120);
-  if (b.enabled !== undefined) m.enabled = !!b.enabled;
+  if (b.retryOnFail !== undefined) m.retryOnFail = b.retryOnFail === true;
+  if (b.enabled !== undefined) {
+    const nextEnabled = b.enabled !== false;
+    if (nextEnabled !== (m.enabled !== false)) { m.enabled = nextEnabled; shouldCheck = true; }
+  }
   if (b.url !== undefined && String(b.url).trim() !== m.url) {
     const url = String(b.url).trim(); if (!monitorUrlValid(url)) return json(ctx.res, 400, { error: '监控地址必须是有效的 http/https 网站地址' });
-    try { await assertSafeHost(new URL(url).hostname); } catch (e) { return json(ctx.res, 400, { error: '监控地址不允许指向内网、回环或云元数据地址' }); } m.url = url; m.status = 'pending';
+    try { await assertSafeHost(new URL(url).hostname); } catch (e) { return json(ctx.res, 400, { error: '监控地址不允许指向内网、回环或云元数据地址' }); } m.url = url; m.status = 'pending'; shouldCheck = true;
   }
-  await checkMonitor(m); saveDB('monitors', db.monitors); logOp(ctx.user, ctx.req, '修改网站监控', m.name); json(ctx.res, 200, { ok: true, monitor: monitorPublic(m) });
+  // 仅启用状态或地址变化时才立即探测；切换失败重试等设置不必额外发请求。
+  if (shouldCheck) await checkMonitor(m);
+  saveDB('monitors', db.monitors); logOp(ctx.user, ctx.req, '修改网站监控', m.name); json(ctx.res, 200, { ok: true, monitor: monitorPublic(m) });
 }, { auth: true });
 route('POST', '/api/admin/status/monitors/:id/check', async ctx => {
   const m = db.monitors.find(x => x.id === ctx.params.id); if (!m) return json(ctx.res, 404, { error: '监控不存在' });
@@ -2147,6 +2591,76 @@ route('POST', '/api/admin/status/monitors/:id/check', async ctx => {
 route('DELETE', '/api/admin/status/monitors/:id', async ctx => {
   const i = db.monitors.findIndex(x => x.id === ctx.params.id); if (i < 0) return json(ctx.res, 404, { error: '监控不存在' });
   const [m] = db.monitors.splice(i, 1); saveDB('monitors', db.monitors); logOp(ctx.user, ctx.req, '删除网站监控', m.name); json(ctx.res, 200, { ok: true });
+}, { auth: true });
+
+// UptimeRobot 数据源配置：仅返回密钥提示，绝不回传明文
+function maskStatusKey(key) {
+  const s = String(key || '');
+  if (!s) return '';
+  if (s.length <= 8) return '****';
+  return s.slice(0, 4) + '••••' + s.slice(-4);
+}
+route('GET', '/api/admin/status/uptimerobot', async ctx => {
+  const key = statusUptimeRobotKey();
+  json(ctx.res, 200, {
+    configured: !!key, keyHint: maskStatusKey(key), keySource: statusUptimeRobotKeySource(),
+    days: statusConfig.days,
+    updatedAt: statusConfig.updatedAt, apiUrl: UPTIMEROBOT_API_URL,
+    localMonitors: db.monitors.length,
+    historyDays: STATUS_HISTORY_DAYS_MAX
+  });
+}, { auth: true });
+route('PUT', '/api/admin/status/uptimerobot', async ctx => {
+  const b = ctx.body || {};
+  const next = { ...statusConfig };
+  if (b.apiKey !== undefined) {
+    const key = String(b.apiKey || '').trim();
+    if (key && !validStatusApiKey(key)) return json(ctx.res, 400, { error: 'API Key 格式不正确（应为 8-128 位字母、数字、下划线或连字符）' });
+    next.apiKey = key;
+  }
+  if (b.days !== undefined) {
+    const days = Number(b.days);
+    if (!Number.isFinite(days) || days < STATUS_HISTORY_DAYS_MIN || days > STATUS_HISTORY_DAYS_MAX) {
+      return json(ctx.res, 400, { error: `统计天数需在 ${STATUS_HISTORY_DAYS_MIN}-${STATUS_HISTORY_DAYS_MAX} 之间` });
+    }
+    next.days = Math.round(days);
+  }
+  next.updatedAt = nowShanghaiISO();
+  const previous = statusConfig;
+  statusConfig = normalizeStatusConfig(next);
+  try {
+    persistStatusConfig(statusConfig);
+  } catch (e) {
+    statusConfig = previous;
+    return json(ctx.res, 500, { error: '保存 UptimeRobot 配置失败：' + String(e.message || e).slice(0, 120) });
+  }
+  statusCache = { signature: '', payload: null, fetchedAt: 0 };
+  logOp(ctx.user, ctx.req, '保存 UptimeRobot 配置', `统计 ${statusConfig.days} 天，密钥${statusConfig.apiKey ? '已设置' : '已清空'}`);
+  const key = statusUptimeRobotKey();
+  json(ctx.res, 200, {
+    ok: true, configured: !!key, keyHint: maskStatusKey(key),
+    keySource: statusUptimeRobotKeySource(), days: statusConfig.days,
+    updatedAt: statusConfig.updatedAt
+  });
+}, { auth: true });
+route('POST', '/api/admin/status/uptimerobot/test', async ctx => {
+  const b = ctx.body || {};
+  const keyOverride = b.apiKey === undefined ? undefined : String(b.apiKey || '').trim();
+  if (keyOverride !== undefined && !keyOverride) return json(ctx.res, 400, { error: '请先填写 API Key' });
+  if (keyOverride && !validStatusApiKey(keyOverride)) return json(ctx.res, 400, { error: 'API Key 格式不正确' });
+  try {
+    const data = await uptimeRobotPost('getAccountDetails', {}, keyOverride);
+    const account = data.account || {};
+    json(ctx.res, 200, {
+      ok: true,
+      monitorLimit: Number(account.monitor_limit) || 0,
+      up: Number(account.up_monitors) || 0,
+      down: Number(account.down_monitors) || 0,
+      paused: Number(account.paused_monitors) || 0
+    });
+  } catch (e) {
+    json(ctx.res, 400, { error: String(e && e.message || '连接 UptimeRobot 失败').slice(0, 200) });
+  }
 }, { auth: true });
 
 // 登录页/前台公开信息
@@ -2883,42 +3397,112 @@ const GEO_RATE_MAX = 40;        // 每分钟最多查询次数
 const GEO_RATE_WINDOW = 60 * 1000;
 const geoRateLog = [];
 
-// 中国省级行政区白名单：启用“拦截海外 IP”后，仅以下区域视为国内访问。
-// 中国香港/中国澳门/中国台湾使用各上游通用的 HK/MO/TW 国家代码归并处理；
-// 其余条目用于 countryCode=CN 时按省/自治区/直辖市识别，兼容中文、英文和常见 API 返回格式。
+// 中国省级行政区识别：用于“国内/海外 IP 拦截”的归属判断和后台诊断展示。
+// 中国香港/中国澳门/中国台湾按 HK/MO/TW 国家代码归并；countryCode=CN 时按省/自治区/直辖市识别。
+// 各上游返回格式差异很大（中文、英文、ISO 3166-2、拼音缩写、城市名），这里统一归一化后再匹配。
+const CHINA_REGION_NAMES = ['北京','天津','上海','重庆','河北','山西','辽宁','吉林','黑龙江','江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','海南','四川','贵州','云南','陕西','甘肃','青海','内蒙古','广西','西藏','宁夏','新疆'];
 const CHINA_REGION_ALIASES = {
-  '北京': '北京', 'beijing': '北京',
-  '天津': '天津', 'tianjin': '天津',
-  '上海': '上海', 'shanghai': '上海',
-  '重庆': '重庆', 'chongqing': '重庆',
-  '河北': '河北', 'hebei': '河北',
-  '山西': '山西', 'shanxi': '山西',
-  '辽宁': '辽宁', 'liaoning': '辽宁',
-  '吉林': '吉林', 'jilin': '吉林',
-  '黑龙江': '黑龙江', 'heilongjiang': '黑龙江',
-  '江苏': '江苏', 'jiangsu': '江苏',
-  '浙江': '浙江', 'zhejiang': '浙江',
-  '安徽': '安徽', 'anhui': '安徽',
-  '福建': '福建', 'fujian': '福建',
-  '江西': '江西', 'jiangxi': '江西',
-  '山东': '山东', 'shandong': '山东',
-  '河南': '河南', 'henan': '河南',
-  '湖北': '湖北', 'hubei': '湖北',
-  '湖南': '湖南', 'hunan': '湖南',
-  '广东': '广东', 'guangdong': '广东',
-  '海南': '海南', 'hainan': '海南',
-  '四川': '四川', 'sichuan': '四川',
-  '贵州': '贵州', 'guizhou': '贵州',
-  '云南': '云南', 'yunnan': '云南',
-  '陕西': '陕西', 'shaanxi': '陕西',
-  '甘肃': '甘肃', 'gansu': '甘肃',
-  '青海': '青海', 'qinghai': '青海',
-  '内蒙古': '内蒙古', 'inner mongolia': '内蒙古', 'inner mongolia autonomous region': '内蒙古',
-  '广西': '广西', 'guangxi': '广西', 'guangxi zhuang autonomous region': '广西',
-  '西藏': '西藏', 'tibet': '西藏', 'xizang': '西藏', 'tibet autonomous region': '西藏',
-  '宁夏': '宁夏', 'ningxia': '宁夏', 'ningxia hui autonomous region': '宁夏',
-  '新疆': '新疆', 'xinjiang': '新疆', 'xinjiang uyghur autonomous region': '新疆', 'xinjiang uygur autonomous region': '新疆'
+  '北京': '北京', 'beijing': '北京', 'cn bj': '北京', 'bj': '北京', '110000': '北京',
+  '天津': '天津', 'tianjin': '天津', 'cn tj': '天津', 'tj': '天津', '120000': '天津',
+  '上海': '上海', 'shanghai': '上海', 'cn sh': '上海', 'sh': '上海', '310000': '上海',
+  '重庆': '重庆', 'chongqing': '重庆', 'cn cq': '重庆', 'cq': '重庆', '500000': '重庆',
+  '河北': '河北', 'hebei': '河北', 'cn he': '河北', 'he': '河北', '130000': '河北',
+  '山西': '山西', 'shanxi': '山西', 'cn sx': '山西', 'sx': '山西', '140000': '山西',
+  '辽宁': '辽宁', 'liaoning': '辽宁', 'cn ln': '辽宁', 'ln': '辽宁', '210000': '辽宁',
+  '吉林': '吉林', 'jilin': '吉林', 'cn jl': '吉林', 'jl': '吉林', '220000': '吉林',
+  '黑龙江': '黑龙江', 'heilongjiang': '黑龙江', 'cn hl': '黑龙江', 'hl': '黑龙江', '230000': '黑龙江',
+  '江苏': '江苏', 'jiangsu': '江苏', 'cn js': '江苏', 'js': '江苏', '320000': '江苏',
+  '浙江': '浙江', 'zhejiang': '浙江', 'cn zj': '浙江', 'zj': '浙江', '330000': '浙江',
+  '安徽': '安徽', 'anhui': '安徽', 'cn ah': '安徽', 'ah': '安徽', '340000': '安徽',
+  '福建': '福建', 'fujian': '福建', 'cn fj': '福建', 'fj': '福建', '350000': '福建',
+  '江西': '江西', 'jiangxi': '江西', 'cn jx': '江西', 'jx': '江西', '360000': '江西',
+  '山东': '山东', 'shandong': '山东', 'cn sd': '山东', 'sd': '山东', '370000': '山东',
+  '河南': '河南', 'henan': '河南', 'cn ha': '河南', 'ha': '河南', '410000': '河南',
+  '湖北': '湖北', 'hubei': '湖北', 'cn hb': '湖北', 'hb': '湖北', '420000': '湖北',
+  '湖南': '湖南', 'hunan': '湖南', 'cn hn': '湖南', 'hn': '湖南', '430000': '湖南',
+  '广东': '广东', 'guangdong': '广东', 'cn gd': '广东', 'gd': '广东', '440000': '广东',
+  '海南': '海南', 'hainan': '海南', 'cn hi': '海南', 'hi': '海南', '460000': '海南',
+  '四川': '四川', 'sichuan': '四川', 'cn sc': '四川', 'sc': '四川', '510000': '四川',
+  '贵州': '贵州', 'guizhou': '贵州', 'cn gz': '贵州', 'gz': '贵州', '520000': '贵州',
+  '云南': '云南', 'yunnan': '云南', 'cn yn': '云南', 'yn': '云南', '530000': '云南',
+  '陕西': '陕西', 'shaanxi': '陕西', 'cn sn': '陕西', 'sn': '陕西', '610000': '陕西',
+  '甘肃': '甘肃', 'gansu': '甘肃', 'cn gs': '甘肃', 'gs': '甘肃', '620000': '甘肃',
+  '青海': '青海', 'qinghai': '青海', 'cn qh': '青海', 'qh': '青海', '630000': '青海',
+  '内蒙古': '内蒙古', 'inner mongolia': '内蒙古', 'nei mongol': '内蒙古', 'neimenggu': '内蒙古', 'cn nm': '内蒙古', 'nm': '内蒙古', '150000': '内蒙古',
+  '广西': '广西', 'guangxi': '广西', 'guangxi zhuang': '广西', 'cn gx': '广西', 'gx': '广西', '450000': '广西',
+  '西藏': '西藏', 'tibet': '西藏', 'xizang': '西藏', 'cn xz': '西藏', 'xz': '西藏', '540000': '西藏',
+  '宁夏': '宁夏', 'ningxia': '宁夏', 'ningxia hui': '宁夏', 'cn nx': '宁夏', 'nx': '宁夏', '640000': '宁夏',
+  '新疆': '新疆', 'xinjiang': '新疆', 'xinjiang uygur': '新疆', 'xinjiang uyghur': '新疆', 'cn xj': '新疆', 'xj': '新疆', '650000': '新疆',
+  '香港': '香港', 'hong kong': '香港', 'hongkong': '香港', 'xianggang': '香港', 'cn hk': '香港', 'hk': '香港', '810000': '香港',
+  '澳门': '澳门', 'macau': '澳门', 'macao': '澳门', 'cn mo': '澳门', 'mo': '澳门', '820000': '澳门',
+  '台湾': '台湾', 'taiwan': '台湾', 'cn tw': '台湾', 'tw': '台湾', '710000': '台湾'
 };
+// 部分上游的 region 字段实际返回城市名；补充主要城市映射，避免“城市可识别但省份缺失”被误判。
+const CHINA_CITY_ALIASES = {
+  'guangzhou': '广东', 'shenzhen': '广东', 'dongguan': '广东', 'foshan': '广东', 'zhuhai': '广东', 'huizhou': '广东', 'zhongshan': '广东', 'shantou': '广东',
+  'hangzhou': '浙江', 'ningbo': '浙江', 'wenzhou': '浙江', 'jiaxing': '浙江', 'shaoxing': '浙江', 'jinhua': '浙江', 'huzhou': '浙江',
+  'nanjing': '江苏', 'suzhou': '江苏', 'wuxi': '江苏', 'changzhou': '江苏', 'nantong': '江苏', 'xuzhou': '江苏', 'yangzhou': '江苏',
+  'chengdu': '四川', 'mianyang': '四川',
+  'wuhan': '湖北', 'yichang': '湖北',
+  'changsha': '湖南', 'zhuzhou': '湖南',
+  'zhengzhou': '河南', 'luoyang': '河南',
+  'jinan': '山东', 'qingdao': '山东', 'yantai': '山东', 'weifang': '山东',
+  'xiamen': '福建', 'fuzhou': '福建', 'quanzhou': '福建',
+  'hefei': '安徽', 'wuhu': '安徽',
+  'nanchang': '江西', 'ganzhou': '江西',
+  'shenyang': '辽宁', 'dalian': '辽宁',
+  'changchun': '吉林',
+  'harbin': '黑龙江',
+  'shijiazhuang': '河北', 'tangshan': '河北', 'baoding': '河北',
+  'taiyuan': '山西',
+  'xian': '陕西', 'xianyang': '陕西',
+  'lanzhou': '甘肃',
+  'xining': '青海',
+  'yinchuan': '宁夏',
+  'urumqi': '新疆', 'wulumuqi': '新疆',
+  'hohhot': '内蒙古', 'huhehaote': '内蒙古',
+  'nanning': '广西', 'guilin': '广西', 'liuzhou': '广西',
+  'guiyang': '贵州', 'zunyi': '贵州',
+  'kunming': '云南', 'dali': '云南',
+  'haikou': '海南', 'sanya': '海南',
+  'lhasa': '西藏',
+  'hong kong': '香港', 'kowloon': '香港',
+  'macau': '澳门', 'macao': '澳门',
+  'taipei': '台湾', 'kaohsiung': '台湾', 'taichung': '台湾'
+};
+function chinaRegionKey(raw) {
+  return String(raw || '')
+    .toLowerCase()
+    .replace(/[\u2019']/g, '')
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, ' ')
+    .replace(/\b(autonomous region|province|municipality|prefecture|region|sheng|shi|zizhiqu|zhuang|zhuangzu|hui|uygur|uyghur)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function matchChinaRegion(raw) {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  // 中文省份名称直接做包含匹配，兼容“广东省”“广西壮族自治区”等写法。
+  for (const name of CHINA_REGION_NAMES) {
+    if (text.includes(name)) return name;
+  }
+  const key = chinaRegionKey(text);
+  if (!key) return '';
+  if (CHINA_REGION_ALIASES[key]) return CHINA_REGION_ALIASES[key];
+  if (CHINA_CITY_ALIASES[key]) return CHINA_CITY_ALIASES[key];
+  // 兼容 “Guangdong, China”“Shenzhen Guangdong” 这类复合写法：逐词匹配。
+  for (const token of key.split(' ')) {
+    if (CHINA_REGION_ALIASES[token]) return CHINA_REGION_ALIASES[token];
+    if (CHINA_CITY_ALIASES[token]) return CHINA_CITY_ALIASES[token];
+  }
+  // 最后只对带空格的多词别名做子串匹配（如 “Inner Mongolia China”），
+  // 避免 xian / dali 这类短拼音误命中其他地名。
+  for (const [alias, name] of Object.entries(CHINA_REGION_ALIASES)) {
+    if (!alias.includes(' ') || alias.length < 4) continue;
+    if (key.includes(alias)) return name;
+  }
+  return '';
+}
 function normalizeChinaRegion(countryCode, region) {
   const cc = String(countryCode || '').toUpperCase();
   if (cc === 'HK') return '香港';
@@ -2927,12 +3511,13 @@ function normalizeChinaRegion(countryCode, region) {
   if (cc !== 'CN') return '';
   const raw = String(region || '').trim();
   if (!raw) return '';
-  // 保留中文省份关键词；英文格式去除 Sheng / Province / Municipality 等后缀后映射。
-  for (const name of ['北京','天津','上海','重庆','河北','山西','辽宁','吉林','黑龙江','江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','海南','四川','贵州','云南','陕西','甘肃','青海','内蒙古','广西','西藏','宁夏','新疆']) {
-    if (raw.includes(name)) return name;
+  // mergeGeoInfos 会把多个数据源的 region 用逗号拼接，逐段识别可避免拼接后无法精确匹配。
+  const parts = raw.split(/[,;/|]+/).map(x => x.trim()).filter(Boolean);
+  for (const part of (parts.length ? parts : [raw])) {
+    const hit = matchChinaRegion(part);
+    if (hit) return hit;
   }
-  const key = raw.toLowerCase().replace(/\b(sheng|province|municipality|autonomous region)\b/g, '').replace(/\s+/g, ' ').trim();
-  return CHINA_REGION_ALIASES[key] || '';
+  return '';
 }
 
 // ippure.com API 配置
@@ -3112,27 +3697,32 @@ function parseIPPureResponse(res, ip) {
     const geo = info.geo || {};
     const sources = ['MaxMind', 'DB-IP', 'IP2Location'];
     let countryCode = '';
+    let region = '';
     let city = '';
     for (const src of sources) {
       if (geo[src] && geo[src].country_code) {
         countryCode = String(geo[src].country_code).toUpperCase();
+        // 不同数据源分别使用 region / province / state / city 字段，尽量补齐省级归属。
+        region = String(geo[src].region || geo[src].province || geo[src].state || '').slice(0, 80);
         city = String(geo[src].city || '').slice(0, 40);
         break;
       }
     }
-    // ipQuality / botClass 用于判断机房 IP 和代理
+    // ipQuality / botClass 用于判断机房 IP 和代理；botClass 只能说明“像机器人流量”，不能作为机房依据。
     const ipQuality = info.ipQuality || {};
-    const botClass = info.botClass || '';
     // ippure 的风险等级：type 字段标识 IP 类型（如 "Hosting/Data Center" 表示机房）
     const ipType = String(info.type || ipQuality.type || '').toLowerCase();
     const isDatacenter = ipType.includes('hosting') || ipType.includes('datacenter') ||
-      ipType.includes('server') || ipType.includes('cloud') || botClass.toLowerCase().includes('bot');
-    const isProxy = !!(ipQuality.proxy || ipQuality.vpn || ipQuality.tor);
+      ipType.includes('data center') || ipType.includes('server') || ipType.includes('cloud');
+    const isTor = !!(ipQuality.tor || String(info.type || '').toLowerCase().includes('tor'));
+    const isProxy = !!(ipQuality.proxy || ipQuality.vpn || isTor);
     return {
       countryCode: countryCode,
+      region: [region, city].filter(Boolean).join(', '),
       org: String(info.asn || info.org || '').slice(0, 100),
       isDatacenter: isDatacenter,
       isProxy: isProxy,
+      isTor: isTor,
       isLocal: false,
       provider: 'ippure'
     };
@@ -3158,13 +3748,18 @@ function getGeoInfoFromIpApiIs(ip) {
             const d = JSON.parse(body.toString('utf8'));
             const cc = String(d.cc || d.country_code || '').toUpperCase();
             if (!cc || !/^[A-Z]{2}$/.test(cc)) return finish(null);
+            const loc = d.location || {};
+            const region = [d.region, d.region_name, loc.state, d.city, loc.city]
+              .map(v => String(v || '').trim()).filter(Boolean)
+              .filter((v, i, a) => a.indexOf(v) === i).join(', ').slice(0, 160);
             finish({
               countryCode: cc,
-              region: String(d.region || d.region_name || '').slice(0, 80),
+              region,
               org: String(d.asn_org || d.company_name || '').slice(0, 100),
               // is_abuser 不是机房依据，不能参与拦截；仅使用明确的 hosting / anonymizer 信号
               isDatacenter: d.is_datacenter === true,
               isProxy: d.is_proxy === true || d.is_vpn === true || d.is_tor === true,
+              isTor: d.is_tor === true,
               isLocal: false, provider: 'ipapi.is'
             });
           } catch (e) { finish(null); }
@@ -3193,7 +3788,13 @@ function getGeoInfoFromIpWhoIs(ip) {
             const d = JSON.parse(body.toString('utf8'));
             const cc = String(d.country_code || '').toUpperCase();
             if (d.success !== true || !/^[A-Z]{2}$/.test(cc)) return finish(null);
-            finish({ countryCode: cc, region: String(d.region || d.region_code || '').slice(0, 80), org: String((d.connection || {}).org || '').slice(0, 100), isDatacenter: false, isProxy: false, isLocal: false, provider: 'ipwho.is' });
+            finish({
+              countryCode: cc,
+              region: [d.region, d.region_code, d.city].map(v => String(v || '').trim()).filter(Boolean)
+                .filter((v, i, a) => a.indexOf(v) === i).join(', ').slice(0, 160),
+              org: String((d.connection || {}).org || '').slice(0, 100),
+              isDatacenter: false, isProxy: false, isTor: false, isLocal: false, provider: 'ipwho.is'
+            });
           } catch (e) { finish(null); }
         }).catch(() => finish(null));
       });
@@ -3208,7 +3809,7 @@ function getGeoInfoFromIpApi(ip) {
   return new Promise(resolve => {
     const options = {
       hostname: 'ip-api.com',
-      path: '/json/' + encodeURIComponent(ip) + '?fields=status,countryCode,regionName,org,as,hosting,proxy&lang=zh',
+      path: '/json/' + encodeURIComponent(ip) + '?fields=status,countryCode,regionName,city,org,as,hosting,proxy&lang=zh',
       timeout: GEO_TIMEOUT,
       headers: { 'User-Agent': 'HuanZhongNav/1.0' }
     };
@@ -3223,10 +3824,12 @@ function getGeoInfoFromIpApi(ip) {
             if (d.status === 'success') {
               finish({
                 countryCode: String(d.countryCode || '').toUpperCase(),
-                region: String(d.regionName || d.region || '').slice(0, 80),
+                region: [d.regionName, d.city].map(v => String(v || '').trim()).filter(Boolean)
+                  .filter((v, i, a) => a.indexOf(v) === i).join(', ').slice(0, 160),
                 org: String(d.org || '').slice(0, 100),
                 isDatacenter: !!d.hosting,
                 isProxy: !!d.proxy,
+                isTor: false,
                 isLocal: false,
                 provider: 'ip-api'
               });
@@ -3244,18 +3847,29 @@ function getGeoInfoFromIpApi(ip) {
   });
 }
 
-/** 合并多源结果：地理归属以首个有效结果为准，机房/匿名信号采用任一可信源的明确命中 */
+/** 合并多源结果：地理归属以首个有效结果为准，机房/匿名信号需要独立数据源交叉确认 */
 function mergeGeoInfos(infos) {
   const valid = infos.filter(Boolean);
   if (!valid.length) return null;
   const primary = valid.find(x => /^[A-Z]{2}$/.test(x.countryCode || '')) || valid[0];
+  const regions = [...new Set(valid.map(x => String(x.region || '').trim()).filter(Boolean))];
+  const datacenterVotes = valid.filter(x => x.isDatacenter === true).map(x => x.provider).filter(Boolean);
+  const proxyVotes = valid.filter(x => x.isProxy === true).map(x => x.provider).filter(Boolean);
+  const torVotes = valid.filter(x => x.isTor === true).map(x => x.provider).filter(Boolean);
   return {
     countryCode: primary.countryCode || '',
-    // countryCode=CN 时优先使用任一上游返回的省级行政区，避免主源缺省 region 导致误判
-    region: valid.map(x => x.region).find(Boolean) || '',
+    // 合并所有上游的省级信息，避免主源只返回城市或英文拼写导致国内地区无法识别。
+    region: regions.join(', ').slice(0, 200),
     org: primary.org || valid.map(x => x.org).find(Boolean) || '',
-    isDatacenter: valid.some(x => x.isDatacenter === true),
-    isProxy: valid.some(x => x.isProxy === true),
+    // 单一数据源的模糊标记很容易误伤普通宽带用户：
+    // - Tor 是明确且高置信的信号，单个数据源命中即可；
+    // - 机房/VPN/代理需要至少两个独立数据源同时确认，才参与拦截。
+    isDatacenter: datacenterVotes.length >= 2,
+    isProxy: torVotes.length > 0 || proxyVotes.length >= 2,
+    isTor: torVotes.length > 0,
+    datacenterVotes,
+    proxyVotes,
+    torVotes,
     isLocal: false,
     providers: valid.map(x => x.provider).filter(Boolean)
   };
@@ -3282,17 +3896,21 @@ function getGeoInfo(ip, forceRefresh = false) {
   geoRateLog.push(now);
 
   return (async () => {
-    // 两个独立数据源并发：ipapi.is 负责机房/代理信号，ipwho.is 负责稳定的国家归属。
-    // IPPure 与 ip-api 仅在前两个都无法给出国家归属时作为兼容兜底，避免其不稳定性主导拦截结果。
-    const primary = await Promise.all([getGeoInfoFromIpApiIs(normalized), getGeoInfoFromIpWhoIs(normalized)]);
+    // 三个独立数据源并发：ipapi.is 与 ip-api 提供机房/代理信号，ipwho.is 提供稳定的国家归属。
+    // 机房/VPN 判定需要至少两个数据源交叉确认，因此 ip-api 常驻查询；ippure 仅作地区兜底。
+    const primary = await Promise.all([
+      getGeoInfoFromIpApiIs(normalized),
+      getGeoInfoFromIpWhoIs(normalized),
+      getGeoInfoFromIpApi(normalized)
+    ]);
     let info = mergeGeoInfos(primary);
     // 当国家归属为 CN 但主源未给出可识别省份时，也要请求地区兜底源；
     // 否则会把实际中国省份访客误当作“未命中白名单”。
     const needFallback = !info || !/^[A-Z]{2}$/.test(info.countryCode) ||
       (info.countryCode === 'CN' && !normalizeChinaRegion(info.countryCode, info.region));
     if (needFallback) {
-      const fallbacks = await Promise.all([getGeoInfoFromIPPure(normalized), getGeoInfoFromIpApi(normalized)]);
-      info = mergeGeoInfos(primary.concat(fallbacks));
+      const fallback = await getGeoInfoFromIPPure(normalized);
+      info = mergeGeoInfos(primary.concat([fallback]));
     }
     if (info && /^[A-Z]{2}$/.test(info.countryCode)) {
       geoCache.set(normalized, { data: info, fetchedAt: Date.now() });
@@ -3300,7 +3918,7 @@ function getGeoInfo(ip, forceRefresh = false) {
       return info;
     }
     // 国家归属未知时一律 fail-open，禁止将空 countryCode 误判为海外。
-    return { countryCode: '', isDatacenter: false, isProxy: false, isLocal: false, error: true };
+    return { countryCode: '', isDatacenter: false, isProxy: false, isTor: false, isLocal: false, error: true };
   })();
 }
 
@@ -3326,11 +3944,11 @@ async function checkIpAccess(ip) {
   }
   // 只有获取到合法 ISO 国家代码才判断国内/海外；空值或异常结果绝不能按海外误封。
   if (!/^[A-Z]{2}$/.test(geo.countryCode || '')) return null;
-  // 国内定义为：中国省级行政区白名单 + 中国香港/中国澳门/中国台湾。
-  // CN 但省级地区缺失或未命中白名单时不视为国内；仅开启“拦截海外”时将其拦截，
-  // 防止模糊归属/海外伪装为 CN 的地址绕过地区限制。
-  const chinaRegion = normalizeChinaRegion(geo.countryCode, geo.region);
-  const isDomestic = !!chinaRegion;
+  // 国内判定以国家代码为准：CN/HK/MO/TW 均视为国内，省份仅用于展示。
+  // 数据源缺少省份时不再按“海外”处理，避免把中国大陆访客误封；疑似代理由上面的机房/匿名规则负责。
+  const cc = String(geo.countryCode || '').toUpperCase();
+  const isDomestic = cc === 'CN' || cc === 'HK' || cc === 'MO' || cc === 'TW';
+  const chinaRegion = normalizeChinaRegion(cc, geo.region) || (cc === 'CN' ? '中国' : '');
   if (db.settings.acDomesticBlock && isDomestic) {
     return { type: 'domestic', autoClose: false, region: chinaRegion };
   }
@@ -5854,10 +6472,11 @@ route('GET', '/api/admin/ip-diagnose', async ctx => {
   // 诊断按钮强制刷新当前 IP 的 geo 缓存，避免管理员看到 24 小时前的旧判定。
   const geo = await getGeoInfo(raw.ip, true);
   let result = null;
+  const cc = String(geo.countryCode || '').toUpperCase();
+  const domestic = cc === 'CN' || cc === 'HK' || cc === 'MO' || cc === 'TW';
   if (!geo.error && !geo.rateLimited && !geo.isLocal) {
     if (db.settings.acDatacenterBlock && (geo.isDatacenter || geo.isProxy)) result = { type: 'datacenter' };
-    else if (/^[A-Z]{2}$/.test(geo.countryCode || '')) {
-      const domestic = !!normalizeChinaRegion(geo.countryCode, geo.region);
+    else if (/^[A-Z]{2}$/.test(cc)) {
       if (db.settings.acDomesticBlock && domestic) result = { type: 'domestic' };
       else if (db.settings.acOverseasBlock && !domestic) result = { type: 'overseas' };
     }
@@ -5866,8 +6485,9 @@ route('GET', '/api/admin/ip-diagnose', async ctx => {
     request: raw,
     geo: {
       countryCode: geo.countryCode || '', region: geo.region || '',
-      chinaRegion: normalizeChinaRegion(geo.countryCode, geo.region),
-      org: geo.org || '', isDatacenter: !!geo.isDatacenter, isProxy: !!geo.isProxy,
+      chinaRegion: normalizeChinaRegion(geo.countryCode, geo.region) || (cc === 'CN' ? '中国' : ''),
+      org: geo.org || '', isDatacenter: !!geo.isDatacenter, isProxy: !!geo.isProxy, isTor: !!geo.isTor,
+      datacenterVotes: geo.datacenterVotes || [], proxyVotes: geo.proxyVotes || [], torVotes: geo.torVotes || [],
       providers: geo.providers || (geo.provider ? [geo.provider] : []),
       error: !!geo.error, rateLimited: !!geo.rateLimited, isLocal: !!geo.isLocal
     },
@@ -7178,21 +7798,31 @@ function buildGuardScript(req) {
     'if(e.keyCode===123||(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67))||(e.ctrlKey&&(e.keyCode===85||e.keyCode===83))){e.preventDefault();e.stopPropagation();return false}' +
     '},true);' +
     'document.addEventListener("contextmenu",function(e){e.preventDefault();return false},true);' +
-    'var dt={open:false};' +
-    'setInterval(function(){' +
-    'var wO=window.outerWidth-window.innerWidth>160;var hO=window.outerHeight-window.innerHeight>160;' +
-    'if((wO||hO)&&!dt.open){dt.open=true;' +
-    'if(G.f12Close){try{window.open("","_self","");window.close()}catch(e){}' +
-    'var d=document.body;if(d){while(d.firstChild)d.removeChild(d.firstChild);' +
+    'var dt={hits:0,active:false,dims:""};' +
+    'function dtWipe(){try{var d=document.body;if(!d)return;while(d.firstChild)d.removeChild(d.firstChild);' +
     'var m=document.createElement("div");' +
-    'm.style.cssText="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f5f5f7;color:#8e8e93;font-family:sans-serif;font-size:14px";' +
-    'm.textContent="\u68c0\u6d4b\u5230\u5f00\u53d1\u8005\u5de5\u5177\uff0c\u9875\u9762\u5df2\u5173\u95ed";d.appendChild(m);document.title="."}}' +
-    'else{try{var d=document.body;while(d.firstChild)d.removeChild(d.firstChild);' +
-    'var m=document.createElement("div");' +
-    'm.style.cssText="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f5f5f7;color:#8e8e93;font-family:sans-serif;font-size:14px";' +
-    'm.textContent="\u68c0\u6d4b\u5230\u5f00\u53d1\u8005\u5de5\u5177\uff0c\u9875\u9762\u5185\u5bb9\u5df2\u6682\u505c\u663e\u793a";d.appendChild(m);document.title="."}catch(e){}}' +
-    '}else if(!wO&&!hO){dt.open=false}' +
-    '},1000);}' +
+    'm.style.cssText="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f5f5f7;color:#8e8e93;font-family:sans-serif;font-size:14px;text-align:center;padding:24px";' +
+    'm.textContent="\u68c0\u6d4b\u5230\u5f00\u53d1\u8005\u5de5\u5177\uff0c\u9875\u9762\u5185\u5bb9\u5df2\u6682\u505c\u663e\u793a";' +
+    'd.appendChild(m);document.title="."}catch(e){}}' +
+    'function dtCheck(){' +
+    // 移动端/触屏设备没有传统开发者工具停靠区域，跳过可避免因浏览器地址栏伸缩误判。
+    'if(document.hidden||document.visibilityState==="hidden")return;' +
+    'if(window.innerWidth<480||window.innerHeight<400)return;' +
+    'if(navigator.maxTouchPoints>0&&window.matchMedia&&window.matchMedia("(pointer:coarse)").matches)return;' +
+    'if(!window.outerWidth||!window.outerHeight)return;' +
+    // 停靠 DevTools 的典型尺寸：右侧约 300px 以上，底部约 260px 以上；
+    // 提高阈值并单独判断宽/高，避免把浏览器工具栏、书签栏误判为 DevTools。
+    'var dw=window.outerWidth-window.innerWidth,dh=window.outerHeight-window.innerHeight;' +
+    'var hit=dw>=320||dh>=280;' +
+    'var dims=window.innerWidth+"x"+window.innerHeight;' +
+    // 窗口缩放、页面缩放或 DevTools 刚打开时尺寸会变化，先重置计数再重新采样。
+    'if(dt.dims!==dims){dt.dims=dims;dt.hits=0;dt.active=false;return}' +
+    'if(hit&&document.body){dt.hits++}else{dt.hits=0;return}' +
+    // 连续两次稳定命中才处理，避免偶发的窗口尺寸抖动导致页面被清空。
+    'if(dt.hits>=2&&!dt.active){dt.active=true;if(G.f12Close){try{window.open("","_self","");window.close()}catch(e){}}dtWipe()}' +
+    '}' +
+    'setTimeout(function(){dt.dims=window.innerWidth+"x"+window.innerHeight;setInterval(dtCheck,1200)},2500);' +
+    '}' +
     '})();</script>';
 }
 
