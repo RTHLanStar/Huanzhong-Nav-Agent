@@ -8,7 +8,7 @@
   <img alt="Modern.js" src="https://img.shields.io/badge/Modern.js-3.11-1E90FF" />
   <img alt="Mantine" src="https://img.shields.io/badge/Mantine-8-339AF0" />
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/badge/License-MIT-green" />
+  <img alt="License" src="https://img.shields.io/badge/License-BUSL--1.1-orange" />
 </p>
 
 <p align="center">
@@ -38,7 +38,7 @@
 - [常见问题](#-常见问题)
 - [开发与测试](#-开发与测试)
 - [贡献指南](#-贡献指南)
-- [开源协议](#-开源协议)
+- [许可证](#-许可证)
 
 ---
 
@@ -616,9 +616,26 @@ npm test         # 先构建，再运行端到端回归测试
 
 ---
 
-## 📄 开源协议
+## 📄 许可证
 
-本项目基于 [MIT License](./LICENSE) 开源，可自由用于个人与商业项目，请保留版权声明。
+本项目采用 **Business Source License 1.1（BUSL-1.1）**，完整条款见 [LICENSE](./LICENSE)。
+
+| 参数 | 内容 |
+| --- | --- |
+| Licensor | RTHLanStar |
+| Licensed Work | Huanzhong Nav（幻终の导航）2.0.0 |
+| Change Date | 2030-11-05 |
+| Change License | MIT License |
+| Additional Use Grant | 允许个人、教育与非营利场景的非商业生产使用；商业生产或付费托管需获得商业授权 |
+
+**使用范围**
+
+- **允许**：学习、测试、修改、分发，以及个人主页、团队内部、教育与非营利项目的非商业生产部署。
+- **需要商业授权**：将本项目用于商业生产环境，或以付费服务、SaaS、托管平台等形式对外提供。
+- **自动转开源**：Change Date 到期后，该版本将按 MIT License 授权。
+- BUSL-1.1 不是 OSI 认可的开源许可证；在 Change Date 之前，请在上述范围内使用。
+
+商业授权与参数调整请联系仓库维护者。
 
 ---
 
