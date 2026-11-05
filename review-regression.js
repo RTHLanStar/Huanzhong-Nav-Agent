@@ -15,7 +15,7 @@ const ROOT = __dirname;
 const SERVER = path.join(ROOT, 'server.js');
 const NODE_AGENT = path.join(ROOT, 'node-agent.js');
 const NODE_AGENT_CONFIG_EXAMPLE = path.join(ROOT, 'node-agent.config.example.json');
-const RSA_CLIENT = path.join(ROOT, 'public', 'rsa.js');
+const RSA_CLIENT = path.join(ROOT, 'test', 'rsa.js');
 const DATA_DIR = path.join(ROOT, '.review-regression-data-' + process.pid);
 const CHUNK_SIZE = 1024 * 1024;
 const passed = [];
@@ -394,16 +394,13 @@ async function main() {
     await step('首个站长注册与会话 Cookie 安全属性', async () => {
       const adminPage = await request('GET', '/admin');
       assertStatus(adminPage, 200, '管理后台页面');
-      assert.ok(adminPage.text.includes('id="authSubmit" disabled'), '管理后台应等待认证信息加载后再允许提交');
-      assert.ok(adminPage.text.includes("credentials = 'same-origin'"), '管理后台请求应显式携带同源 Cookie');
-      assert.ok(adminPage.text.includes('function showNodeTokenModal(token)'), '节点添加后应使用令牌弹窗展示');
-      assert.ok(adminPage.text.includes('id="nodeTokenCopy"'), '令牌弹窗应提供一键复制按钮');
-      assert.ok(adminPage.text.includes('节点令牌复制成功'), '令牌复制成功应有明确提示');
-      assert.ok(adminPage.text.includes('id="nodeTokenClose"'), '令牌弹窗应提供关闭按钮');
-      assert.ok(adminPage.text.includes('nodeBatchUploadBtn') && adminPage.text.includes('nodeMigrateBtn'), '后台应提供节点批量上传和节点迁移入口');
-      assert.ok(adminPage.text.includes('loadNodeBrowser') && adminPage.text.includes('mNodeBrowserList'), '后台应提供节点文件浏览与选择引用入口');
-      assert.ok(adminPage.text.includes('mNodeUploadProgress') && adminPage.text.includes('正在上传'), '节点批量上传应展示进度状态');
-      assert.ok(adminPage.text.includes('mobileNavOpen') && adminPage.text.includes('mobileNavBackdrop') && adminPage.text.includes('startNodeRefresh'), '后台应提供移动导航和节点自动刷新');
+      // 后台已重构为 React SPA：确认返回构建入口、注入防护脚本且 HTML 不被强缓存
+      assert.ok(adminPage.text.includes('id="root"'), '管理后台应挂载 React 根节点');
+      assert.ok(/\/static\/js\/[^"]+\.js/.test(adminPage.text), '管理后台应引用构建后的前端资源');
+      assert.ok(adminPage.text.includes('幻终'), '页面应包含站点标题');
+      assert.ok(adminPage.text.includes('has-custom-bg'), '全站防护脚本应注入背景同步样式');
+      assert.ok(String(adminPage.headers['cache-control'] || '').includes('no-cache'), 'HTML 入口不应被强缓存');
+      assert.ok(!/id="authSubmit"/.test(adminPage.text), '旧版内联后台不应再被返回');
       const secret = await encryptedPassword('OwnerPass123!', true);
       const r = await request('POST', '/api/auth/register', {
         username: 'owner', password: secret

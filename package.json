@@ -1,14 +1,33 @@
 {
   "name": "huanzhong-nav",
-  "version": "1.0.0",
-  "description": "幻终の导航 - 轻量级网址导航系统（零依赖，Node.js 单文件后端 + 本地 JSON 数据库）",
-  "main": "server.js",
+  "version": "2.0.0",
+  "private": true,
+  "description": "幻终の导航 - 轻量级网址导航系统（React + Modern.js + Mantine 前端，零依赖 Node.js 后端）",
   "scripts": {
+    "dev": "modern dev",
+    "build": "modern build",
     "start": "node server.js",
+    "pretest": "modern build",
     "test": "node review-regression.js"
   },
+  "dependencies": {
+    "@mantine/core": "^8.3.18",
+    "@mantine/hooks": "^8.3.18",
+    "@mantine/notifications": "^8.3.18",
+    "@modern-js/runtime": "~3.11.0",
+    "@tabler/icons-react": "^3.50.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@modern-js/app-tools": "~3.11.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.7.0"
+  },
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=18.0.0"
   },
   "license": "MIT"
 }

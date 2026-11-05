@@ -17,6 +17,7 @@ node_modules/
 *.log
 
 # 本地工作环境与构建产物
+dist/
 .workbuddy/
 releases/
 .deploy/

@@ -21,7 +21,9 @@ const ROOT = __dirname;
 const DATA_DIR = process.env.HUANZHONG_DATA_DIR
   ? path.resolve(process.env.HUANZHONG_DATA_DIR)
   : path.join(ROOT, 'data');
-const PUBLIC_DIR = path.join(ROOT, 'public');
+// 前端构建产物目录（React + Modern.js）；由 `npm run build` 生成
+const DIST_DIR = path.join(ROOT, 'dist');
+const SPA_ENTRY = path.join(DIST_DIR, 'html', 'index', 'index.html');
 // 是否信任反向代理传来的 X-Forwarded-For / X-Real-IP 头：
 // - 直接暴露端口访问（未经过 Nginx/CDN 等代理）：必须保持 false，否则攻击者可伪造
 //   X-Forwarded-For 头绕过 IP 封禁、限流与访问控制
@@ -1761,49 +1763,153 @@ function genCaptchaCode() {
   return s;
 }
 
-/** 渲染验证码图片（彩色字符 + 随机位移 + 噪点 + 干扰线） */
+/** 渲染验证码图片：逐字旋转/倾斜/缩放 + 全图正弦扭曲 + 多层噪点与干扰曲线，降低 OCR 识别率 */
 function renderCaptchaImage(text) {
-  const scale = 3, cw = 5 * scale, ch = 7 * scale;
-  const width = 14 + text.length * (cw + 4);
-  const height = ch + 14;
-  const rgba = Buffer.alloc(width * height * 4);
-  const setPx = (x, y, r, g, b) => {
-    if (x < 0 || y < 0 || x >= width || y >= height) return;
-    const i = (y * width + x) * 4;
-    rgba[i] = r; rgba[i + 1] = g; rgba[i + 2] = b; rgba[i + 3] = 255;
-  };
-  for (let i = 0; i < width * height; i++) { // 白色背景
-    rgba[i * 4] = 255; rgba[i * 4 + 1] = 255; rgba[i * 4 + 2] = 255; rgba[i * 4 + 3] = 255;
-  }
-  const colors = [[99, 102, 241], [217, 70, 239], [14, 165, 233], [234, 88, 12], [16, 185, 129]];
-  for (let ci = 0; ci < text.length; ci++) {
-    const glyph = CAPTCHA_FONT[text[ci]];
+  const W = 184, H = 58, SS = 3;
+  const sw = W * SS, sh = H * SS;
+  // 字符层（超采样）：alpha 与颜色分离，便于后续扭曲时做双线性采样
+  const alpha = new Float32Array(sw * sh);
+  const cr = new Uint8Array(sw * sh);
+  const cg = new Uint8Array(sw * sh);
+  const cb = new Uint8Array(sw * sh);
+  const palette = [[67, 56, 202], [162, 28, 175], [3, 105, 161], [194, 65, 12], [4, 120, 87], [190, 24, 93]];
+  const cellW = 4.8, cellH = 5.9; // 每个点阵单元在最终图中的像素尺寸
+  const step = (W - 30) / text.length;
+  const ph = [0, 1, 2, 3].map(() => Math.random() * Math.PI * 2);
+
+  for (let i = 0; i < text.length; i++) {
+    const glyph = CAPTCHA_FONT[text[i]];
     if (!glyph) continue;
-    const c = colors[randInt(0, colors.length - 1)];
-    const ox = 8 + ci * (cw + 4) + randInt(-2, 2);
-    const oy = 7 + randInt(-2, 2);
-    for (let row = 0; row < 7; row++) {
-      for (let col = 0; col < 5; col++) {
+    const base = palette[randInt(0, palette.length - 1)];
+    // 每字符独立几何变换：旋转 ±12°、倾斜 ±8°、缩放 0.9~1.12
+    const theta = (Math.random() - 0.5) * 0.42;
+    const shear = (Math.random() - 0.5) * 0.28;
+    const scale = 0.9 + Math.random() * 0.22;
+    const cx = 17 + step * (i + 0.5) + (Math.random() - 0.5) * 4;
+    const cy = H / 2 + (Math.random() - 0.5) * 6;
+    const cos = Math.cos(theta), sin = Math.sin(theta);
+    const radius = Math.hypot(5 * cellW * scale / 2, 7 * cellH * scale / 2) + 8;
+    const x0 = Math.max(0, Math.floor((cx - radius) * SS));
+    const x1 = Math.min(sw - 1, Math.ceil((cx + radius) * SS));
+    const y0 = Math.max(0, Math.floor((cy - radius) * SS));
+    const y1 = Math.min(sh - 1, Math.ceil((cy + radius) * SS));
+    for (let py = y0; py <= y1; py++) {
+      for (let px = x0; px <= x1; px++) {
+        // 逆变换回字符本地坐标：先反向旋转，再反 shear
+        const dx = px / SS - cx, dy = py / SS - cy;
+        const rx = (cos * dx + sin * dy) / scale;
+        const ry = (-sin * dx + cos * dy) / scale;
+        const gx = rx - shear * ry + 5 * cellW / 2;
+        const gy = ry + 7 * cellH / 2;
+        if (gx < 0 || gy < 0 || gx >= 5 * cellW || gy >= 7 * cellH) continue;
+        const col = Math.floor(gx / cellW), row = Math.floor(gy / cellH);
         if (glyph[row][col] !== '1') continue;
-        for (let sy = 0; sy < scale; sy++) for (let sx = 0; sx < scale; sx++) {
-          setPx(ox + col * scale + sx, oy + row * scale + sy, c[0], c[1], c[2]);
-        }
+        const idx = py * sw + px;
+        if (alpha[idx] === 1) continue;
+        alpha[idx] = 1;
+        // 纵向渐变：顶部偏亮、底部偏深，避免纯色块被二值化直接提取
+        const t = gy / (7 * cellH);
+        const shade = 0.78 + 0.3 * (1 - t);
+        cr[idx] = Math.min(255, base[0] * shade + 24);
+        cg[idx] = Math.min(255, base[1] * shade + 24);
+        cb[idx] = Math.min(255, base[2] * shade + 24);
       }
     }
   }
-  for (let k = 0; k < Math.floor(width * height / 16); k++) { // 噪点
-    const v = randInt(130, 225);
-    setPx(randInt(0, width - 1), randInt(0, height - 1), v, v, v);
-  }
-  for (let k = 0; k < 3; k++) { // 干扰线
-    const x1 = randInt(0, width), y1 = randInt(0, height), x2 = randInt(0, width), y2 = randInt(0, height);
-    const c = colors[randInt(0, colors.length - 1)];
-    const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), 1);
-    for (let s = 0; s <= steps; s++) {
-      setPx(Math.round(x1 + (x2 - x1) * s / steps), Math.round(y1 + (y2 - y1) * s / steps), c[0], c[1], c[2]);
+
+  const sampleAlpha = (sx, sy) => {
+    const x = Math.max(0, Math.min(sw - 1.001, sx));
+    const y = Math.max(0, Math.min(sh - 1.001, sy));
+    const ix = Math.floor(x), iy = Math.floor(y);
+    const fx = x - ix, fy = y - iy;
+    const i00 = iy * sw + ix, i10 = i00 + 1, i01 = i00 + sw, i11 = i01 + 1;
+    return alpha[i00] * (1 - fx) * (1 - fy) + alpha[i10] * fx * (1 - fy) +
+      alpha[i01] * (1 - fx) * fy + alpha[i11] * fx * fy;
+  };
+  const nearestColor = (sx, sy) => {
+    const ix = Math.max(0, Math.min(sw - 1, Math.round(sx)));
+    const iy = Math.max(0, Math.min(sh - 1, Math.round(sy)));
+    for (let r = 0; r <= 3; r++) {
+      for (let oy = -r; oy <= r; oy++) {
+        for (let ox = -r; ox <= r; ox++) {
+          const nx = ix + ox, ny = iy + oy;
+          if (nx < 0 || ny < 0 || nx >= sw || ny >= sh) continue;
+          const k = ny * sw + nx;
+          if (alpha[k] > 0) return [cr[k], cg[k], cb[k]];
+        }
+      }
+    }
+    return [45, 45, 60];
+  };
+
+  const out = Buffer.alloc(W * H * 4);
+  const put = (x, y, r, g, b, a) => {
+    if (x < 0 || y < 0 || x >= W || y >= H || a <= 0) return;
+    const i = (y * W + x) * 4;
+    const k = Math.min(1, a);
+    out[i] = Math.round(out[i] * (1 - k) + r * k);
+    out[i + 1] = Math.round(out[i + 1] * (1 - k) + g * k);
+    out[i + 2] = Math.round(out[i + 2] * (1 - k) + b * k);
+    out[i + 3] = 255;
+  };
+
+  // 逐像素合成：横向与纵向各叠加两组不同频率的正弦位移，使笔画弯折、字符连通
+  for (let y = 0; y < H; y++) {
+    const wx = 1.6 * Math.sin(y * 0.13 + ph[0]) + 0.7 * Math.sin(y * 0.39 + ph[1]);
+    for (let x = 0; x < W; x++) {
+      const wy = 1.2 * Math.sin(x * 0.1 + ph[2]) + 0.6 * Math.sin(x * 0.29 + ph[3]);
+      const ratio = y / H;
+      let r = 252 - ratio * 12;
+      let g = 252 - ratio * 10;
+      let b = 255 - ratio * 4;
+      const grain = randInt(-5, 5);
+      r += grain; g += grain; b += grain;
+      if (x % 7 === 3 && y % 7 === 3) { r -= 6; g -= 6; b -= 6; }
+      const a = sampleAlpha((x + wx) * SS, (y + wy) * SS);
+      if (a > 0.02) {
+        const c = nearestColor((x + wx) * SS, (y + wy) * SS);
+        r = r * (1 - a) + c[0] * a;
+        g = g * (1 - a) + c[1] * a;
+        b = b * (1 - a) + c[2] * a;
+      }
+      const i = (y * W + x) * 4;
+      out[i] = Math.max(0, Math.min(255, Math.round(r)));
+      out[i + 1] = Math.max(0, Math.min(255, Math.round(g)));
+      out[i + 2] = Math.max(0, Math.min(255, Math.round(b)));
+      out[i + 3] = 255;
     }
   }
-  return encodePng({ width, height, rgba });
+
+  // 干扰曲线：二次贝塞尔，横穿字符主体
+  const curve = (r, g, b, a, width) => {
+    const x0 = randInt(-10, W), y0 = randInt(-8, H);
+    const x1 = randInt(0, W), y1 = randInt(-6, H + 6);
+    const x2 = randInt(W - 20, W + 10), y2 = randInt(-8, H);
+    const steps = 240;
+    for (let s = 0; s <= steps; s++) {
+      const t = s / steps, mt = 1 - t;
+      const x = mt * mt * x0 + 2 * mt * t * x1 + t * t * x2;
+      const y = mt * mt * y0 + 2 * mt * t * y1 + t * t * y2;
+      for (let oy = 0; oy < width; oy++) put(Math.round(x), Math.round(y) + oy, r, g, b, a);
+    }
+  };
+  for (let k = 0; k < 2; k++) {
+    const c = palette[randInt(0, palette.length - 1)];
+    curve(c[0], c[1], c[2], 0.2 + Math.random() * 0.12, 1);
+  }
+  // 短线段与随机噪点：打散字符边缘，抑制连通域分割
+  for (let k = 0; k < 10; k++) {
+    const x = randInt(0, W - 1), y = randInt(0, H - 1);
+    const len = randInt(4, 14), horizontal = Math.random() < 0.5;
+    const c = palette[randInt(0, palette.length - 1)];
+    for (let s = 0; s < len; s++) put(x + (horizontal ? s : 0), y + (horizontal ? 0 : s), c[0], c[1], c[2], 0.22);
+  }
+  for (let k = 0; k < 140; k++) {
+    const v = randInt(90, 210);
+    put(randInt(0, W - 1), randInt(0, H - 1), v, v, v, 0.22);
+  }
+
+  return encodePng({ width: W, height: H, rgba: out });
 }
 
 /** 签发验证码，返回 id（图片通过 /api/captcha/img?c=<id> 获取） */
@@ -7826,45 +7932,57 @@ function buildGuardScript(req) {
     '})();</script>';
 }
 
-function serveStatic(req, res, pathname) {
-  if (req.method !== 'GET' && req.method !== 'HEAD') {
-    res.writeHead(405); return res.end();
-  }
-  let rel = pathname;
-  if (rel === '/' || rel === '/index.html') rel = '/index.html';
-  else if (rel === '/admin' || rel === '/admin/') rel = '/admin.html';
-  else if (rel === '/download' || rel === '/download/') rel = '/download.html';
-  else if (rel === '/status' || rel === '/status/') rel = '/status.html';
-  // 文件共享功能关闭时，下载页不再对外提供（后台管理不受影响）
-  if (rel === '/download.html' && !featureOn('downloadEnabled')) {
-    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-    return res.end('404 Not Found');
-  }
-
-  const filePath = path.normalize(path.join(PUBLIC_DIR, rel));
-  if (!filePath.startsWith(PUBLIC_DIR + path.sep) && filePath !== path.join(PUBLIC_DIR, 'index.html')) {
-    res.writeHead(403); return res.end('Forbidden');
-  }
+function sendBuildFile(req, res, filePath, injectGuard) {
   fs.readFile(filePath, (err, buf) => {
     if (err) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       return res.end('404 Not Found');
     }
     const ext = path.extname(filePath).toLowerCase();
-    // HTML 页面注入全站防护脚本（背景同步 + F12 防护），非 HTML 静态资源原样返回
-    if (ext === '.html' && req.method !== 'HEAD') {
+    let payload = buf;
+    if (ext === '.html' && injectGuard && req.method !== 'HEAD') {
       const guard = buildGuardScript(req);
       const html = buf.toString('utf8');
       const idx = html.lastIndexOf('</body>');
-      const out = idx >= 0 ? (html.slice(0, idx) + guard + html.slice(idx)) : (html + guard);
-      buf = Buffer.from(out, 'utf8');
+      payload = Buffer.from(idx >= 0 ? (html.slice(0, idx) + guard + html.slice(idx)) : (html + guard), 'utf8');
     }
     res.writeHead(200, {
       'Content-Type': MIME[ext] || 'application/octet-stream',
+      // 带哈希的静态资源可长时间缓存；HTML 入口必须每次校验，保证发布后立即生效
       'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600'
     });
-    res.end(req.method === 'HEAD' ? undefined : buf);
+    res.end(req.method === 'HEAD' ? undefined : payload);
   });
+}
+
+// 前端 SPA 入口：/、/admin、/status、/download 共用同一份构建产物，由 React Router 接管
+const SPA_PATHS = new Set([
+  '/', '/index.html',
+  '/admin', '/admin/', '/admin.html',
+  '/status', '/status/', '/status.html',
+  '/download', '/download/', '/download.html'
+]);
+
+function serveStatic(req, res, pathname) {
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405); return res.end();
+  }
+  // 文件共享功能关闭时，下载页不再对外提供（后台管理不受影响）
+  if ((pathname === '/download' || pathname === '/download/' || pathname === '/download.html') && !featureOn('downloadEnabled')) {
+    res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+    return res.end('404 Not Found');
+  }
+  // 浏览器默认会请求 /favicon.ico；站点图标由前端按后台设置动态注入，这里直接返回空响应避免 404 噪音
+  if (pathname === '/favicon.ico') { res.writeHead(204); return res.end(); }
+  if (SPA_PATHS.has(pathname)) return sendBuildFile(req, res, SPA_ENTRY, true);
+
+  const filePath = path.normalize(path.join(DIST_DIR, pathname));
+  if (!filePath.startsWith(DIST_DIR + path.sep)) {
+    res.writeHead(403); return res.end('Forbidden');
+  }
+  // 无扩展名的未知路径回退到 SPA 入口，交由前端路由处理
+  if (!path.extname(filePath)) return sendBuildFile(req, res, SPA_ENTRY, true);
+  return sendBuildFile(req, res, filePath, false);
 }
 
 // ---------------- 启动 ----------------
@@ -7946,6 +8064,9 @@ setInterval(() => { pruneSessions(); pruneBans(); pruneNonces(); prunePendingFil
 setInterval(() => { checkAllMonitors().catch(e => console.error('[监控检测失败]', e)); }, STATUS_MONITOR_CHECK_INTERVAL).unref();
 setTimeout(() => { checkAllMonitors().catch(e => console.error('[监控首次检测失败]', e)); }, 3000).unref();
 
+if (!fs.existsSync(SPA_ENTRY)) {
+  console.warn('[提示] 未找到前端构建产物 dist/html/index/index.html，请先执行：npm install && npm run build');
+}
 server.listen(PORT, '0.0.0.0', () => {
   console.log('==============================================');
   console.log('  幻终の导航 已启动');
