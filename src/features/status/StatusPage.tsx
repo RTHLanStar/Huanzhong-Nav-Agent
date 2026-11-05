@@ -11,6 +11,7 @@ import {
   IconAlertTriangle,
 } from '@tabler/icons-react';
 import { api } from '../../lib/api';
+import BrandLogo from '../../components/BrandLogo';
 import {
   formatDateTime,
   formatInterval,
@@ -94,9 +95,7 @@ export default function StatusPage() {
       <header className="hz-header">
         <div className="hz-container hz-header-inner">
           <a className="hz-brand" href="/">
-            <div className="hz-logo" style={{ fontSize: 15 }}>
-              <IconActivityHeartbeat size={20} />
-            </div>
+            <BrandLogo />
             <div>
               <div className="hz-brand-title">{siteName}</div>
               <div style={{ fontSize: 11, color: 'var(--txt-2)' }}>运行状态中心</div>

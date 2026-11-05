@@ -568,6 +568,21 @@ a {
   transition: transform 0.22s ease;
 }
 
+/* 无图标站点：用与图片同尺寸的圆角块承载首字，避免整块渐变与 58px 图标混排时的体量差异 */
+.hz-card-initial {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
 .hz-card:hover .hz-card-tile img {
   transform: scale(1.06);
 }
@@ -638,6 +653,13 @@ a {
   height: 40px;
 }
 
+.hz-grid[data-layout='compact'] .hz-card-initial {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  font-size: 18px;
+}
+
 .hz-grid[data-layout='compact'] .hz-card-desc {
   display: none;
 }
@@ -669,14 +691,25 @@ a {
   height: 26px;
 }
 
+.hz-grid[data-layout='list'] .hz-card-initial {
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
 .hz-grid[data-layout='list'] .hz-card-info {
   flex: 1;
   padding: 0;
+  order: 2;
 }
 
+/* 列表布局下收藏按钮必须在最右端（DOM 中位于图标之后，靠 order 提到文字右侧） */
 .hz-grid[data-layout='list'] .hz-fav {
   position: static;
   opacity: 1;
+  order: 3;
+  margin-left: auto;
 }
 
 .hz-empty {
@@ -1293,21 +1326,6 @@ a {
   }
 }
 
-@media (max-width: 520px) {
-  .hz-brand-title {
-    display: none;
-  }
-
-  .hz-header-inner {
-    height: 56px;
-  }
-}
-
-.hz-nav-open,
-.hz-nav-close {
-  display: none !important;
-}
-
 .hz-nav-open,
 .hz-nav-close {
   display: none !important;
@@ -1315,10 +1333,6 @@ a {
 
 @media (max-width: 860px) {
   .hz-nav-open {
-    display: inline-flex !important;
-  }
-
-  .hz-nav-close {
     display: inline-flex !important;
   }
 

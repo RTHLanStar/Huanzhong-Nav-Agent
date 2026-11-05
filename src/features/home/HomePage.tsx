@@ -22,6 +22,7 @@ import { api } from '../../lib/api';
 import { formatNumber, safeImage, safeUrl } from '../../lib/format';
 import { loadJson, loadString, saveJson, saveString, downloadBlob, visitorToken } from '../../lib/storage';
 import { useApp } from '../../components/AppProviders';
+import BrandLogo from '../../components/BrandLogo';
 import type { Announcement, Countdown, FriendLink, QqGroup, Site, WeatherInfo } from '../../lib/types';
 import {
   AnnouncementsModal,
@@ -39,7 +40,10 @@ function pad2(value: number): string {
 function SiteIcon({ site }: { site: Site }) {
   const [failed, setFailed] = useState(false);
   const src = safeImage(site.icon);
-  if (!src || failed) return <>{site.name.trim().charAt(0).toUpperCase() || '?'}</>;
+  if (!src || failed) {
+    // 无图标时用与图片等大的圆角块承载首字，避免「有图 58px / 无图整块渐变」造成的视觉不齐
+    return <span className="hz-card-initial">{site.name.trim().charAt(0).toUpperCase() || '?'}</span>;
+  }
   return <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} />;
 }
 
@@ -600,9 +604,7 @@ export default function HomePage() {
       <header className="hz-header">
         <div className="hz-container hz-header-inner">
           <div className="hz-brand">
-            <div className="hz-logo">
-              {info?.logo ? <img src={safeImage(info.logo)} alt="" /> : '幻'}
-            </div>
+            <BrandLogo />
             <div className="hz-brand-title">{info?.siteName || '幻终の导航'}</div>
           </div>
           <div className="hz-actions">

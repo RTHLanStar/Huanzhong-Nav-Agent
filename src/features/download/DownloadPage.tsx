@@ -37,6 +37,7 @@ import { api, ApiError } from '../../lib/api';
 import { formatBytes, formatDateTime, formatNumber } from '../../lib/format';
 import { renderMarkdown } from '../../lib/markdown';
 import { useApp } from '../../components/AppProviders';
+import BrandLogo from '../../components/BrandLogo';
 import type { Folder, ShareFile } from '../../lib/types';
 
 type PreviewKind = 'image' | 'video' | 'audio' | 'pdf' | 'text';
@@ -364,9 +365,7 @@ export default function DownloadPage() {
       <header className="hz-header">
         <div className="hz-container hz-header-inner">
           <a className="hz-brand" href="/">
-            <div className="hz-logo" style={{ fontSize: 15 }}>
-              <IconFolderOpen size={20} />
-            </div>
+            <BrandLogo />
             <div>
               <div className="hz-brand-title">{info?.siteName || '幻终の导航'}</div>
               <div style={{ fontSize: 11, color: 'var(--txt-2)' }}>文件下载</div>
